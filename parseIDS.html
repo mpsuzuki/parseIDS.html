@@ -236,6 +236,10 @@
       <input type="button" value="load ids.txt" onclick="loadIdsFile()">
       <input type="button" value="parse ids.txt" onclick="parseIdsText()">
     </form>
+    <form name="outStyle" onsubmit="return false;">
+      <input type="text" name="outFontSize">
+      <input type="button" value="change fontSize" onclick="updateFontSize()">
+    </form>
     <form name="checkComponent" onsubmit="return false;">
       <input type="text" name="components">
       <input type="button" value="lookup" onclick="lookupComponents()">
@@ -244,10 +248,6 @@
       <input type="radio" name="addHexUcsToResult" value="yes">show UCS codepoint
       <input type="radio" name="addHexUcsToResult" value="no" checked>no UCS codepoint
       <br>
-    </form>
-    <form name="outStyle" onsubmit="return false;">
-      <input type="text" name="outFontSize">
-      <input type="button" value="change fontSize" onclick="updateFontSize()">
     </form>
     <div id="loadedIds">
     </div>
