@@ -80,6 +80,8 @@
 
       var idsDB = new Array();
       var idsText = new String();
+      var unihanDB = new Array();
+      var unihanText = new String();
 
       // -------------------------------------------------------
       function loadIdsFileByXHR() {
@@ -118,6 +120,42 @@
         }
       }
 
+      function loadUnihanFileByXHR() {
+        var reqUnihan;
+        if (window.ActiveXObject) {
+          reqUnihan = new ActiveXObject('Microsoft.XMLHTTP');
+        } else {
+          reqUnihan = new XMLHttpRequest();
+        }
+        reqUnihan.open('GET', document.UnihanFile.pathToUnihan.value, false);
+        reqUnihan.send(null);
+        if (reqUnihan.status == 0) {
+          unihanText = reqUnihan.responseText;
+          document.getElementById("loadedIds").innerHTML = unihanText.length.toString(10) + " bytes loaded";
+        }
+      }
+
+      function loadUnihanFileByFileAPI() {
+        var unihanFile = document.UnihanFile.pathToUnihan.files[0];
+        var unihanFileReader = new FileReader();
+        unihanFileReader.onload = function(event) {
+          unihanText = event.target.result;
+          document.getElementById("loadedIds").innerHTML = unihanText.length.toString(10) + " bytes loaded";
+        }
+        unihanFileReader.readAsText(unihanFile, "utf-8");
+      }
+
+      function loadUnihanFile() {
+        if (window.File && window.FileReader) {
+          loadUnihanFileByFileAPI();
+        } else {
+          loadUnihanFileByXHR();
+        }
+        if (document.IdsFile.debugFileLoader[0].checked) {
+          document.getElementById("loadedIds").innerHTML = "<pre>" + unihanText + "</pre>";
+        }
+      }
+
       // TODO: array cannot hold more than 0xFFFF members!
       function parseIdsText() {
         var ucsName, ucs, toks, i, j, k;
@@ -131,10 +169,47 @@
         document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
       }
 
+      function parseUnihanText() {
+        var i, j, l, toks, u, ustr, prop, val;
+        var unihanItems = unihanText.split("\n");
+        j = 0;
+        for ( i in unihanItems ) {
+          if ( unihanItems[i].slice(0,2) == "U+" ) {
+            toks = unihanItems[i].split("\t");
+            l = toks[0].length;
+            u = parseInt(toks[0].slice(2,l), 16);
+            if (u < 0x10000) {
+              ustr = String.fromCharCode(u);
+            } else if (u < 0xEFFFF) {
+              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
+            } else {
+              continue;
+            }
+            prop  = toks[1];
+            val   = toks[2];
+            if ( prop != "kTotalStrokes" ) {
+              continue;
+            }
+            if ( unihanDB[prop] == undefined ) {
+              unihanDB[prop] = new Array();
+            }
+            unihanDB[prop][ustr] = parseInt(val, 10);
+            j += 1;
+          }
+        }
+        unihanText = "";
+        // document.getElementById("loadedIds").innerHTML = unihanItems.length.toString(10) + " items parsed";
+        document.getElementById("loadedIds").innerHTML = j + " items parsed";
+      }
+
       function addHexCodePointToUcsArray(inArr) {
         outArr = new Array();
         for ( var i in inArr ) {
-          outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ")" );
+          if ( unihanDB["kTotalStrokes"] == undefined || inArr[i] == undefined || unihanDB["kTotalStrokes"][inArr[i]] == undefined ) {
+            outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ":XXX)" );
+          } else {
+            outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ":" + unihanDB["kTotalStrokes"][inArr[i]].toString(10) + ")" );
+          }
         }
         return outArr;
       }
@@ -169,6 +244,10 @@
           candidates = results;
           results = new Array();
         }
+
+        candidates = candidates.sort(function(a, b) {
+          return (unihanDB["kTotalStrokes"][a] - unihanDB["kTotalStrokes"][b]);
+        });
 
         if (document.checkComponent.addHexUcsToResult[0].checked) {
           candidates = addHexCodePointToUcsArray(candidates);
@@ -235,6 +314,11 @@
       <input type="file" name="pathToIds">
       <input type="button" value="load ids.txt" onclick="loadIdsFile()">
       <input type="button" value="parse ids.txt" onclick="parseIdsText()">
+    </form>
+    <form name="UnihanFile" onsubmit="return false;">
+      <input type="file" name="pathToUnihan">
+      <input type="button" value="load Unihan.txt" onclick="loadUnihanFile()">
+      <input type="button" value="parse Unihan.txt" onclick="parseUnihanText()">
     </form>
     <form name="outStyle" onsubmit="return false;">
       <input type="text" name="outFontSize">
