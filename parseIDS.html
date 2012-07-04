@@ -82,8 +82,11 @@
       // -------------------------------------------------------
 
       var idsDB = new Array();
+      var hasIdsDB = false;
       var idsText = new String();
+
       var unihanDB = new Array();
+      var hasUnihanDB = false;
       var unihanText = new String();
 
       // -------------------------------------------------------
@@ -169,6 +172,7 @@
           ucs = toks.shift();
           idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
         }
+        hasIdsDB = true;
         document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
       }
 
@@ -200,6 +204,7 @@
             j += 1;
           }
         }
+        hasUnihanDB = true;
         unihanText = "";
         // document.getElementById("loadedIds").innerHTML = unihanItems.length.toString(10) + " items parsed";
         document.getElementById("loadedIds").innerHTML = j + " items parsed";
@@ -208,7 +213,9 @@
       function addHexCodePointToUcsArray(inArr) {
         outArr = new Array();
         for ( var i in inArr ) {
-          if ( unihanDB["kTotalStrokes"] == undefined || inArr[i] == undefined || unihanDB["kTotalStrokes"][inArr[i]] == undefined ) {
+          if ( !hasUnihanDB ) {
+            outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ")" );
+          } else if ( unihanDB["kTotalStrokes"] == undefined || inArr[i] == undefined || unihanDB["kTotalStrokes"][inArr[i]] == undefined ) {
             outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ":XXX)" );
           } else {
             outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ":" + unihanDB["kTotalStrokes"][inArr[i]].toString(10) + ")" );
@@ -248,9 +255,11 @@
           results = new Array();
         }
 
-        candidates = candidates.sort(function(a, b) {
-          return (unihanDB["kTotalStrokes"][a] - unihanDB["kTotalStrokes"][b]);
-        });
+        if ( hasUnihanDB ) {
+          candidates = candidates.sort(function(a, b) {
+            return (unihanDB["kTotalStrokes"][a] - unihanDB["kTotalStrokes"][b]);
+          });
+        }
 
         if (document.checkComponent.addHexUcsToResult[0].checked) {
           candidates = addHexCodePointToUcsArray(candidates);
