@@ -30,6 +30,9 @@
         return ustr.charCodeAt(0);
       }
 
+      var showDebug = false;
+      var showOptions = false;
+
       var IdsItem = function() {
         this.idsArrays = new Array();
         this.cacheN = new Array();
@@ -115,7 +118,7 @@
         } else {
           loadIdsFileByXHR();
         }
-        if (document.IdsFile.debugFileLoader[0].checked) {
+        if (document.getElementById("showDebug").checked) {
           document.getElementById("loadedIds").innerHTML = "<pre>" + idsText + "</pre>";
         }
       }
@@ -151,7 +154,7 @@
         } else {
           loadUnihanFileByXHR();
         }
-        if (document.IdsFile.debugFileLoader[0].checked) {
+        if (document.getElementById("showDebug").checked) {
           document.getElementById("loadedIds").innerHTML = "<pre>" + unihanText + "</pre>";
         }
       }
@@ -302,15 +305,66 @@
       }
 
       function updateFontSize() {
-        document.getElementById("loadedIds").style.fontSize = parseInt(document.outStyle.outFontSize.value);
+        document.getElementById("loadedIds").style.fontSize = parseInt(document.getElementById("outFontSize").value);
+      }
+
+      function showOptionForms() {
+        var formForFontSize   = document.createElement("FORM");
+        formForFontSize.id    = "formForFontSize";
+
+        var inputForFontSize  = document.createElement("INPUT");
+        inputForFontSize.type = "text";
+        inputForFontSize.id   = "outFontSize";
+        formForFontSize.appendChild(inputForFontSize);
+
+        var buttonForFontSize = document.createElement("INPUT");
+        buttonForFontSize.type = "button";
+        buttonForFontSize.id   = "buttonToUpdateFontSize";
+        buttonForFontSize.value = "change FontSize";
+        buttonForFontSize.onclick = function() { updateFontSize(); };
+        formForFontSize.appendChild(buttonForFontSize);
+
+        document.getElementById("Setting").appendChild(formForFontSize);
+      }
+
+      function hideOptionForms() {
+        var nodeForSetting = document.getElementById("Setting");
+        var chNodes = nodeForSetting.childNodes;
+        var numChNodes = chNodes.length;
+        for (var i = 0; i < numChNodes; i += 1 ) {
+          var chNodeId = chNodes[i].id;
+          if ( chNodeId == "formForFontSize" ) {
+            nodeForSetting.removeChild(chNodes[i]);
+          }
+        }
+      }
+
+      function updateSetting() {
+        showDebug = false;
+        if (document.getElementById("showDebug").checked) {
+          showDebug = true;
+        }
+
+        if ( !showOptions && document.getElementById("showOptions").checked) {
+          showOptionForms();
+          showOptions = true;
+        } else if ( showOptions && !(document.getElementById("showOptions").checked)) {
+          hideOptionForms();
+          showOptions = false;
+        }
       }
 
     // -->
     </script>
-    <form name="IdsFile" onsubmit="return false;">
-      <input type="radio" name="debugFileLoader" value="yes">debug
-      <input type="radio" name="debugFileLoader" value="no" checked>no debug
+    <form id="Setting" onchange="updateSetting();">
+      <input type="radio" name="debugFileLoader" id="showDebug">debug
+      <input type="radio" name="debugFileLoader" id="hideDebug" checked>no debug
       <br>
+      <input type="radio" name="optionForms" id="showOptions">show options
+      <input type="radio" name="optionForms" id="hideOptions" checked>hide options
+      <br>
+    </form>
+    <form name="IdsFile" onsubmit="return false;">
       <input type="file" name="pathToIds">
       <input type="button" value="load ids.txt" onclick="loadIdsFile()">
       <input type="button" value="parse ids.txt" onclick="parseIdsText()">
@@ -319,10 +373,6 @@
       <input type="file" name="pathToUnihan">
       <input type="button" value="load Unihan.txt" onclick="loadUnihanFile()">
       <input type="button" value="parse Unihan.txt" onclick="parseUnihanText()">
-    </form>
-    <form name="outStyle" onsubmit="return false;">
-      <input type="text" name="outFontSize">
-      <input type="button" value="change fontSize" onclick="updateFontSize()">
     </form>
     <form name="checkComponent" onsubmit="return false;">
       <input type="text" name="components">
