@@ -176,6 +176,18 @@
         document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
       }
 
+      function showAtomicIds() {
+        if ( hasIdsDB ) {
+          var atomicIds = new Array();
+          for ( ucs in idsDB ) {
+            if ( 1 == idsDB[ucs].idsArrays.length && ucs == idsDB[ucs].idsArrays[0] ) {
+              atomicIds.push(ucs);
+            }
+          }
+        }
+        document.getElementById("loadedIds").innerHTML = atomicIds.join(", ");
+      }
+
       function parseUnihanText() {
         var i, j, l, toks, u, ustr, prop, val;
         var unihanItems = unihanText.split("\n");
@@ -377,6 +389,7 @@
       <input type="file" name="pathToIds">
       <input type="button" value="load ids.txt" onclick="loadIdsFile()">
       <input type="button" value="parse ids.txt" onclick="parseIdsText()">
+      <input type="button" value="show atomic characters" onclick="showAtomicIds()">
     </form>
     <form name="UnihanFile" onsubmit="return false;">
       <input type="file" name="pathToUnihan">
