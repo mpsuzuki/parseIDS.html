@@ -1,6 +1,35 @@
 <html>
   <head>
     <title>parseIDS</title>
+    <style>
+    <!--
+    body {
+      text-align: center;
+    }
+    #wrapper {
+      text-align: left;
+      width: 100%;
+      margin: 0;
+      auto;
+    }
+    #maincontainer {
+      text-align: left;
+      width: 79%;
+      margin-left: 1%;
+      float: left;
+    }
+    #sidebar {
+      text-align: left;
+      width: 20%;
+      float: left;
+      background-color: AFAFAF;
+    }
+    #footer {
+      clear: both;
+      width: 100%;
+    }
+    -->
+    </style>
   </head>
   <body>
     <script type="text/javascript">
@@ -172,8 +201,24 @@
           ucs = toks.shift();
           idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
         }
+
+        var formAtomicIds = document.createElement("FORM");
+        var buttonAtomicIds = document.createElement("INPUT");
+        buttonAtomicIds.type = "button";
+        buttonAtomicIds.id = "switchAtomicIds";
+        buttonAtomicIds.value = "show atomic IDS";
+        buttonAtomicIds.onclick = function() { showAtomicIds(); };
+        formAtomicIds.appendChild(buttonAtomicIds);
+        document.getElementById("sidebarTop").appendChild(formAtomicIds);
+
         hasIdsDB = true;
         document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
+      }
+
+      function hideAtomicIds() {
+        document.getElementById("switchAtomicIds").value = "show atomic IDS";
+        document.getElementById("switchAtomicIds").onclick = function() { showAtomicIds(); };
+        document.getElementById("sidebarBody").innerHTML = "";
       }
 
       function showAtomicIds() {
@@ -185,7 +230,9 @@
             }
           }
         }
-        document.getElementById("loadedIds").innerHTML = atomicIds.join(", ");
+        document.getElementById("sidebarBody").innerHTML = atomicIds.join(", ");
+        document.getElementById("switchAtomicIds").value = "hide atomic IDS";
+        document.getElementById("switchAtomicIds").onclick = function() { hideAtomicIds(); };
       }
 
       function parseUnihanText() {
@@ -375,37 +422,50 @@
         }
       }
 
-    // -->
+    -->
     </script>
-    <form id="Setting" onchange="updateSetting();">
-      <input type="radio" name="debugFileLoader" id="showDebug">debug
-      <input type="radio" name="debugFileLoader" id="hideDebug" checked>no debug
-      <br>
-      <input type="radio" name="optionForms" id="showOptions">show options
-      <input type="radio" name="optionForms" id="hideOptions" checked>hide options
-      <br>
-    </form>
-    <form name="IdsFile" onsubmit="return false;">
-      <input type="file" name="pathToIds">
-      <input type="button" value="load ids.txt" onclick="loadIdsFile()">
-      <input type="button" value="parse ids.txt" onclick="parseIdsText()">
-      <input type="button" value="show atomic characters" onclick="showAtomicIds()">
-    </form>
-    <form name="UnihanFile" onsubmit="return false;">
-      <input type="file" name="pathToUnihan">
-      <input type="button" value="load Unihan.txt" onclick="loadUnihanFile()">
-      <input type="button" value="parse Unihan.txt" onclick="parseUnihanText()">
-    </form>
-    <form name="checkComponent" onsubmit="return false;">
-      <input type="text" name="components">
-      <input type="button" value="lookup" onclick="lookupComponents()">
-      <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
-      <br>
-      <input type="radio" name="addHexUcsToResult" value="yes">show UCS codepoint
-      <input type="radio" name="addHexUcsToResult" value="no" checked>no UCS codepoint
-      <br>
-    </form>
-    <div id="loadedIds">
+    <div id="wrapper">
+      <div id="header">
+      </div>
+      <div id="sidebar">
+        <div id="sidebarTop">
+        </div>
+        <div id="sidebarBody">
+        </div>
+      </div>
+      <div id="maincontainer">
+        <form id="Setting" onchange="updateSetting();">
+          <input type="radio" name="debugFileLoader" id="showDebug">debug
+          <input type="radio" name="debugFileLoader" id="hideDebug" checked>no debug
+          <br>
+          <input type="radio" name="optionForms" id="showOptions">show options
+          <input type="radio" name="optionForms" id="hideOptions" checked>hide options
+          <br>
+        </form>
+        <form name="IdsFile" onsubmit="return false;">
+          <input type="file" name="pathToIds">
+          <input type="button" value="load ids.txt" onclick="loadIdsFile()">
+          <input type="button" value="parse ids.txt" onclick="parseIdsText()">
+        </form>
+        <form name="UnihanFile" onsubmit="return false;">
+          <input type="file" name="pathToUnihan">
+          <input type="button" value="load Unihan.txt" onclick="loadUnihanFile()">
+          <input type="button" value="parse Unihan.txt" onclick="parseUnihanText()">
+        </form>
+        <form name="checkComponent" onsubmit="return false;">
+          <input type="text" name="components">
+          <input type="button" value="lookup" onclick="lookupComponents()">
+          <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
+          <br>
+          <input type="radio" name="addHexUcsToResult" value="yes">show UCS codepoint
+          <input type="radio" name="addHexUcsToResult" value="no" checked>no UCS codepoint
+          <br>
+        </form>
+        <div id="loadedIds">
+        </div>
+      </div>
+      <div id="footer">
+      </div>
     </div>
   </body>
 </html>
