@@ -421,7 +421,6 @@
           showOptions = false;
         }
       }
-
     -->
     </script>
     <div id="wrapper">
@@ -434,7 +433,7 @@
         </div>
       </div>
       <div id="maincontainer">
-        <form id="Setting" onchange="updateSetting();">
+        <form id="Setting">
           <input type="radio" name="debugFileLoader" id="showDebug">debug
           <input type="radio" name="debugFileLoader" id="hideDebug" checked>no debug
           <br>
@@ -467,5 +466,8 @@
       <div id="footer">
       </div>
     </div>
+    <script>
+      document.getElementById("Setting").addEventListener("change", function() {updateSetting();}, false);
+    </script>
   </body>
 </html>
