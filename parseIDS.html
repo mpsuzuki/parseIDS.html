@@ -119,111 +119,87 @@
       var hasUnihanDB = false;
       var unihanText = new String();
 
-      // -------------------------------------------------------
-      function loadIdsFileByXHR() {
-        var err;
-        var reqIds;
-        if (window.ActiveXObject) {
-          reqIds = new ActiveXObject('Microsoft.XMLHTTP');
-        } else {
-          reqIds = new XMLHttpRequest();
-        }
-        reqIds.open('GET', document.IdsFile.pathToIds.value, false);
-        try {
-          reqIds.send(null);
-        }
-        catch (err) {
-          if (err.code) {
-            document.getElementById("loadedIds").innerHTML = "Error in reading ids.txt by XMLHttpRequest" + err.message;
-          } else {
-            idsText = reqIds.responseText;
-            document.getElementById("loadedIds").innerHTML = idsText.length.toString(10) + " bytes loaded";
-          }
+      function setGlobalText(destName, str) {
+        switch (destName) {
+        case "idsText":
+          idsText = str;
+          break;
+        case "unihanText":
+          unihanText = str;
+          break;
+        default:
+          break;
         }
       }
 
-      function loadIdsFileByFileAPI() {
-        var idsFile = document.IdsFile.pathToIds.files[0];
-        var idsFileReader = new FileReader();
+      function getGlobalText(destName) {
+        switch (destName) {
+        case "idsText":
+          return idsText;
+        case "unihanText":
+          return unihanText;
+        default:
+          return null;
+        }
+      }
+      // -------------------------------------------------------
+      function loadFileByXHR(filePath, destName, msgElm) {
+        var err;
+        var req;
+        if (window.ActiveXObject) {
+          req = new ActiveXObject('Microsoft.XMLHTTP');
+        } else {
+          req = new XMLHttpRequest();
+        }
+        req.open('GET', filePath, false);
+        try {
+          req.send(null);
+        }
+        catch (err) {
+          if (err.code) {
+            msgElm.innerHTML = "Error in reading " + filePath + " by " + err.message;
+          } else {
+            setGlobalText(destName, req.responseText);
+            msgElm.innerHTML = destObj.length.toString(10) + " bytes loaded";
+          }
+        }
+        return err.code;
+      }
+
+      function loadFileByFileAPI(filePath, destName, msgElm) {
+        var fileReader = new FileReader();
         var fileIsLoaded = false;
-        idsFileReader.onload = function(event) {
-          idsText = event.target.result;
-          document.getElementById("loadedIds").innerHTML = idsText.length.toString(10) + " bytes loaded";
+        fileReader.onload = function(event) {
+          var loadedText = event.target.result;
+          setGlobalText(destName, loadedText);
+          msgElm.innerHTML = loadedText.length.toString(10) + " bytes loaded";
           fileIsLoaded = true;
         }
-        idsFileReader.readAsText(idsFile, "utf-8");
-        while (idsFileReader.readyState == 1) { // loading 
-          document.getElementById("loadedIds").innerHTML = "loading";
-        }
-        if (idsFileReader.readyState == 2 && !fileIsLoaded) {
+        fileReader.readAsText(filePath, "utf-8");
+        if (fileReader.readyState == 2 && !fileIsLoaded) {
           brokenFileApi = true;
-          document.getElementById("loadedIds").innerHTML = "Error in reading ids.txt by File API, retry with XMLHttpRequest";
-          loadIdsFileByXHR();
+          msgElm.innerHTML = "Error in reading " + filePath + " by File API, retry with XHR";
+          loadFileByXHR(filePath, destName, msgElm);
+        }
+      }
+
+      function loadFile(filePath, destName, msgElm) {
+        if (window.File && window.FileReader && !brokenFileApi) {
+          loadFileByFileAPI(filePath, destName, msgElm);
+        } else {
+          loadFileByXHR(filePath, destName, msgElm);
+        }
+        if (document.getElementById("showDebug").checked) {
+          msgElm.innerHTML = "<pre>" + getGlobalText(destName) + "</pre>";
         }
       }
 
       function loadIdsFile() {
-        if (window.File && window.FileReader && !brokenFileApi) {
-          loadIdsFileByFileAPI();
-        } else {
-          loadIdsFileByXHR();
-        }
-        if (document.getElementById("showDebug").checked) {
-          document.getElementById("loadedIds").innerHTML = "<pre>" + idsText + "</pre>";
-        }
-      }
-
-      function loadUnihanFileByXHR() {
-        var err;
-        var reqUnihan;
-        if (window.ActiveXObject) {
-          reqUnihan = new ActiveXObject('Microsoft.XMLHTTP');
-        } else {
-          reqUnihan = new XMLHttpRequest();
-        }
-        reqUnihan.open('GET', document.UnihanFile.pathToUnihan.value, false);
-        try {
-          reqUnihan.send(null);
-        }
-        catch (err) {
-          if (err.code) {
-            document.getElementById("loadedIds").innerHTML = "Error in reading unihan.txt by XMLHttpRequest" + err.message;
-          } else {
-            unihanText = reqUnihan.responseText;
-            document.getElementById("loadedIds").innerHTML = unihanText.length.toString(10) + " bytes loaded";
-          }
-        }
-      }
-
-      function loadUnihanFileByFileAPI() {
-        var fileIsLoaded = false;
-        var unihanFile = document.UnihanFile.pathToUnihan.files[0];
-        var unihanFileReader = new FileReader();
-        unihanFileReader.onload = function(event) {
-          fileIsLoaded = true;
-          unihanText = event.target.result;
-          document.getElementById("loadedIds").innerHTML = unihanText.length.toString(10) + " bytes loaded";
-        }
-        unihanFileReader.readAsText(unihanFile, "utf-8");
-        while (unihanFileReader.readyState == 1) { // loading 
-          document.getElementById("loadedIds").innerHTML = "loading";
-        }
-        if (unihanFileReader.readyState == 2 && !fileIsLoaded) {
-          brokenFileApi = true;
-          document.getElementById("loadedIds").innerHTML = "Error in reading unihan.txt by File API, retry with XMLHttpRequest";
-          loadUnihanFileByXHR();
-        }
+        loadFile(document.IdsFile.pathToIds.files[0], "idsText", document.getElementById("loadedIds"));
       }
 
       function loadUnihanFile() {
-        if (window.File && window.FileReader && !brokenFileApi) {
-          loadUnihanFileByFileAPI();
-        } else {
-          loadUnihanFileByXHR();
-        }
-        if (document.getElementById("showDebug").checked) {
-          document.getElementById("loadedIds").innerHTML = "<pre>" + unihanText + "</pre>";
-        }
+        loadFile(document.UnihanFile.pathToUnihan.files[0], "unihanText", document.getElementById("loadedIds"));
       }
 
       // TODO: array cannot hold more than 0xFFFF members!
