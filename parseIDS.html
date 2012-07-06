@@ -526,16 +526,20 @@
         showOptions = false;
       }
 
-      function enableDebug() {
-        document.getElementById("buttonForDebug").value = "disable debug";
-        document.getElementById("buttonForDebug").onclick = function() { disableDebug(); };
-        showDebug = true;
+      function updateOptionForms() {
+        if (document.getElementById("chkboxForOptions").checked) {
+          showOptionForms();
+        } else {
+          hideOptionForms();
+        }
       }
 
-      function disableDebug() {
-        document.getElementById("buttonForDebug").value = "debug";
-        document.getElementById("buttonForDebug").onclick = function() { enableDebug(); };
-        showDebug = false;
+      function updateDebug() {
+        if (document.getElementById("chkboxForDebug").checked) {
+          showDebug = true;
+        } else {
+          showDebug = false;
+        }
       }
 
     -->
@@ -551,8 +555,8 @@
       </div>
       <div id="maincontainer">
         <form id="Setting">
-          <input type="button" id="buttonForDebug" value="debug" onclick="enableDebug()">
-          <input type="button" id="buttonForOptions" value="show options" onclick="showOptionForms()">
+          <input type="checkbox" id="chkboxForDebug"   onclick="updateDebug()">debug
+          <input type="checkbox" id="chkboxForOptions" onclick="updateOptionForms()">show options
           <input type="checkbox" id="chkboxForSideBar" onclick="updateSideBar()">show sidebar
         </form>
         <form name="IdsFile" onsubmit="return false;">
