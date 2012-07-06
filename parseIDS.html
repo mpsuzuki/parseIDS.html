@@ -143,9 +143,10 @@
         }
       }
       // -------------------------------------------------------
-      function loadFileByXHR(filePath, destName, msgElm) {
+      function loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn) {
         var err;
         var req;
+        curBtn.disabled = true;
         if (window.ActiveXObject) {
           req = new ActiveXObject('Microsoft.XMLHTTP');
         } else {
@@ -159,35 +160,41 @@
           if (err.code) {
             msgElm.innerHTML = "Error in reading " + filePath + " by " + err.message;
           } else {
+            nxtBtn.disabled = false;
             setGlobalText(destName, req.responseText);
             msgElm.innerHTML = destObj.length.toString(10) + " bytes loaded";
           }
         }
+        curBtn.disabled = false;
         return err.code;
       }
 
-      function loadFileByFileAPI(filePath, destName, msgElm) {
+      function loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn) {
         var fileReader = new FileReader();
         var fileIsLoaded = false;
+        curBtn.disabled = true;
         fileReader.onload = function(event) {
           var loadedText = event.target.result;
           setGlobalText(destName, loadedText);
           msgElm.innerHTML = loadedText.length.toString(10) + " bytes loaded";
+          curBtn.disabled = false;
+          nxtBtn.disabled = false;
           fileIsLoaded = true;
         }
         fileReader.readAsText(filePath, "utf-8");
         if (fileReader.readyState == 2 && !fileIsLoaded) {
           brokenFileApi = true;
           msgElm.innerHTML = "Error in reading " + filePath + " by File API, retry with XHR";
-          loadFileByXHR(filePath, destName, msgElm);
+          loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
       }
 
-      function loadFile(filePath, destName, msgElm) {
+      function loadFile(filePath, destName, msgElm, curBtn, nxtBtn) {
+        curBtn.disabled = true;
         if (window.File && window.FileReader && !brokenFileApi) {
-          loadFileByFileAPI(filePath, destName, msgElm);
+          loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn);
         } else {
-          loadFileByXHR(filePath, destName, msgElm);
+          loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
         if (document.getElementById("showDebug").checked) {
           msgElm.innerHTML = "<pre>" + getGlobalText(destName) + "</pre>";
@@ -195,11 +202,11 @@
       }
 
       function loadIdsFile() {
-        loadFile(document.IdsFile.pathToIds.files[0], "idsText", document.getElementById("loadedIds"));
+        loadFile(document.IdsFile.pathToIds.files[0], "idsText", document.getElementById("loadedIds"), document.getElementById("buttonToLoadIds"), document.getElementById("buttonToParseIds"));
       }
 
       function loadUnihanFile() {
-        loadFile(document.UnihanFile.pathToUnihan.files[0], "unihanText", document.getElementById("loadedIds"));
+        loadFile(document.UnihanFile.pathToUnihan.files[0], "unihanText", document.getElementById("loadedIds"), document.getElementById("buttonToLoadUnihan"), document.getElementById("buttonToParseUnihan"));
       }
 
       // TODO: array cannot hold more than 0xFFFF members!
@@ -454,13 +461,13 @@
         </form>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="pathToIds">
-          <input type="button" value="load ids.txt" onclick="loadIdsFile()">
-          <input type="button" value="parse ids.txt" onclick="parseIdsText()">
+          <input type="button" id="buttonToLoadIds" value="load ids.txt" onclick="loadIdsFile()">
+          <input type="button" id="buttonToParseIds" value="parse ids.txt" onclick="parseIdsText()">
         </form>
         <form name="UnihanFile" onsubmit="return false;">
           <input type="file" name="pathToUnihan">
-          <input type="button" value="load Unihan.txt" onclick="loadUnihanFile()">
-          <input type="button" value="parse Unihan.txt" onclick="parseUnihanText()">
+          <input type="button" id="buttonToLoadUnihan" value="load Unihan.txt" onclick="loadUnihanFile()">
+          <input type="button" id="buttonToParseUnihan" value="parse Unihan.txt" onclick="parseUnihanText()">
         </form>
         <form name="checkComponent" onsubmit="return false;">
           <input type="text" name="components">
@@ -479,6 +486,10 @@
     </div>
     <script>
       document.getElementById("Setting").addEventListener("change", function() {updateSetting();}, false);
+      document.getElementById("buttonToLoadIds").disabled = false;
+      document.getElementById("buttonToParseIds").disabled = true;
+      document.getElementById("buttonToLoadUnihan").disabled = false;
+      document.getElementById("buttonToParseUnihan").disabled = true;
     </script>
   </body>
 </html>
