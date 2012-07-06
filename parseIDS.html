@@ -36,6 +36,8 @@
     <!--
       var showDebug = false;
       var showOptions = false;
+      var pngDir = null;
+      var usePng = false;
 
       function utf16Str2UcsArr(ustr) {
         var i, c, arr;
@@ -411,6 +413,44 @@
         formForFontSize.appendChild(buttonForFontSize);
 
         document.getElementById("Setting").appendChild(formForFontSize);
+
+        // ----
+
+        var formForPngDir = document.createElement("FORM");
+        formForPngDir.id = "formForPngDir";
+
+        var inputForPngDir = document.createElement("INPUT");
+        inputForPngDir.type = "text";
+        inputForPngDir.id = "pngDir";
+        if ( pngDir != null ) {
+          inputForPngDir.value = pngDir;
+        }
+        inputForPngDir.addEventListener("change", function() {
+          pngDir = document.getElementById("pngDir").value;
+        }, false);
+        formForPngDir.appendChild(inputForPngDir);
+
+        var textForPngDir = document.createTextNode("dirname for PNG files");
+        formForPngDir.appendChild(textForPngDir);
+
+        var chkBoxForPng = document.createElement("INPUT");
+        chkBoxForPng.type = "checkbox";
+        chkBoxForPng.id = "showPng";
+        if ( usePng ) {
+          chkBoxForPng.checked = true;
+        }
+        chkBoxForPng.addEventListener("change", function() {
+          usePng = document.getElementById("showPng").checked;
+        }, false);
+        formForPngDir.appendChild(chkBoxForPng);
+
+        var textForPng = document.createTextNode("show PNG file");
+        formForPngDir.appendChild(textForPng);
+
+        document.getElementById("Setting").appendChild(formForPngDir);
+
+        // ----
+
         document.getElementById("buttonForOptions").value = "hide options";
         document.getElementById("buttonForOptions").onclick = function() { hideOptionForms(); };
         showOptions = true;
@@ -420,10 +460,14 @@
         var nodeForSetting = document.getElementById("Setting");
         var chNodes = nodeForSetting.childNodes;
         var numChNodes = chNodes.length;
-        for (var i = 0; i < numChNodes; i += 1 ) {
+        for (var i = numChNodes; i > 0; ) {
+          i -= 1;
           var chNodeId = chNodes[i].id;
           switch (chNodeId) {
           case "formForFontSize":
+            nodeForSetting.removeChild(chNodes[i]);
+            break;
+          case "formForPngDir":
             nodeForSetting.removeChild(chNodes[i]);
             break;
           default:
@@ -462,7 +506,6 @@
           <input type="button" id="buttonForDebug" value="debug" onclick="enableDebug()">
           <input type="button" id="buttonForOptions" value="show options" onclick="showOptionForms()">
         </form>
-        <br>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="pathToIds">
           <input type="button" id="buttonToLoadIds" value="load ids.txt" onclick="loadIdsFile()">
