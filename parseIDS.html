@@ -38,6 +38,46 @@
       var showOptions = false;
       var pngDir = null;
       var usePng = false;
+      var sideBarWidthPercent = 20;
+
+      function deleteAllNodeInElm(elmName) {
+        var sidebarObj = document.getElementById(elmName);
+        var chNodes = sidebarObj.childNodes;
+        var numChNodes = chNodes.length;
+        for (var i = numChNodes; i > 0; ) {
+          i -= 1;
+          sidebarObj.removeChild(chNodes[i]);
+        }
+      }
+
+      function shrinkSideBar() {
+        deleteAllNodeInElm("sidebarTop");
+        deleteAllNodeInElm("sidebarBody");
+       
+        document.getElementById("sidebar").style.width = "0%";
+      }
+
+      function expandSideBar() {
+        document.getElementById("sidebar").style.width = sideBarWidthPercent.toString(10) + "%";
+
+        var formAtomicIds = document.createElement("FORM");
+        var buttonAtomicIds = document.createElement("INPUT");
+        buttonAtomicIds.type = "button";
+        buttonAtomicIds.id = "switchAtomicIds";
+        buttonAtomicIds.value = "show atomic IDS";
+        buttonAtomicIds.onclick = function() { showAtomicIds(); };
+        formAtomicIds.appendChild(buttonAtomicIds);
+
+        document.getElementById("sidebarTop").appendChild(formAtomicIds);
+      }
+
+      function updateSideBar() {
+        if (document.getElementById("chkboxForSideBar").checked) {
+          expandSideBar();
+        } else {
+          shrinkSideBar();
+        }
+      }
 
       function utf16Str2UcsArr(ustr) {
         var i, c, arr;
@@ -221,15 +261,6 @@
           ucs = toks.shift();
           idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
         }
-
-        var formAtomicIds = document.createElement("FORM");
-        var buttonAtomicIds = document.createElement("INPUT");
-        buttonAtomicIds.type = "button";
-        buttonAtomicIds.id = "switchAtomicIds";
-        buttonAtomicIds.value = "show atomic IDS";
-        buttonAtomicIds.onclick = function() { showAtomicIds(); };
-        formAtomicIds.appendChild(buttonAtomicIds);
-        document.getElementById("sidebarTop").appendChild(formAtomicIds);
 
         hasIdsDB = true;
         document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
@@ -522,6 +553,7 @@
         <form id="Setting">
           <input type="button" id="buttonForDebug" value="debug" onclick="enableDebug()">
           <input type="button" id="buttonForOptions" value="show options" onclick="showOptionForms()">
+          <input type="checkbox" id="chkboxForSideBar" onclick="updateSideBar()">show sidebar
         </form>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="pathToIds">
