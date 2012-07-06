@@ -303,6 +303,17 @@
         return outArr;
       }
 
+      function addPngTagToUcsArray(inArr) {
+        var outArr = new Array();
+        for ( var i in inArr ) {
+          var ustr = inArr[i].split("(");
+          var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
+          var subDir = uhex.slice(0,-2);
+          outArr.push( inArr[i] + "<img height=50 align=\"middle\" src=\"" + pngDir + "/" + subDir + "/U+" + uhex + ".png\">" );
+        }
+        return outArr;
+      }
+
       function lookupComponents() {
         var components = utf16Str2UcsArr(document.checkComponent.components.value);
         var lookupDB = new Array();
@@ -343,7 +354,13 @@
         if (document.checkComponent.addHexUcsToResult[0].checked) {
           candidates = addHexCodePointToUcsArray(candidates);
         }
-        document.getElementById("loadedIds").innerHTML = candidates.join(", ");
+
+        if (usePng) {
+          candidates = addPngTagToUcsArray(candidates);
+          document.getElementById("loadedIds").innerHTML = candidates.join("<br>");
+        } else {
+          document.getElementById("loadedIds").innerHTML = candidates.join(", ");
+        }
       }
 
       function decomposeSelectedComponents(wholeString, selectionStart, selectionEnd) {
