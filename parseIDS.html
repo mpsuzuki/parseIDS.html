@@ -34,6 +34,9 @@
   <body>
     <script type="text/javascript">
     <!--
+      var showDebug = false;
+      var showOptions = false;
+
       function utf16Str2UcsArr(ustr) {
         var i, c, arr;
         arr = new Array();
@@ -58,9 +61,6 @@
         }
         return ustr.charCodeAt(0);
       }
-
-      var showDebug = false;
-      var showOptions = false;
 
       var IdsItem = function() {
         this.idsArrays = new Array();
@@ -196,7 +196,7 @@
         } else {
           loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
-        if (document.getElementById("showDebug").checked) {
+        if (showDebug) {
           msgElm.innerHTML = "<pre>" + getGlobalText(destName) + "</pre>";
         }
       }
@@ -411,6 +411,9 @@
         formForFontSize.appendChild(buttonForFontSize);
 
         document.getElementById("Setting").appendChild(formForFontSize);
+        document.getElementById("buttonForOptions").value = "hide options";
+        document.getElementById("buttonForOptions").onclick = function() { hideOptionForms(); };
+        showOptions = true;
       }
 
       function hideOptionForms() {
@@ -419,26 +422,30 @@
         var numChNodes = chNodes.length;
         for (var i = 0; i < numChNodes; i += 1 ) {
           var chNodeId = chNodes[i].id;
-          if ( chNodeId == "formForFontSize" ) {
+          switch (chNodeId) {
+          case "formForFontSize":
             nodeForSetting.removeChild(chNodes[i]);
+            break;
+          default:
           }
         }
+        document.getElementById("buttonForOptions").value = "show options";
+        document.getElementById("buttonForOptions").onclick = function() { showOptionForms(); };
+        showOptions = false;
       }
 
-      function updateSetting() {
+      function enableDebug() {
+        document.getElementById("buttonForDebug").value = "disable debug";
+        document.getElementById("buttonForDebug").onclick = function() { disableDebug(); };
+        showDebug = true;
+      }
+
+      function disableDebug() {
+        document.getElementById("buttonForDebug").value = "debug";
+        document.getElementById("buttonForDebug").onclick = function() { enableDebug(); };
         showDebug = false;
-        if (document.getElementById("showDebug").checked) {
-          showDebug = true;
-        }
-
-        if ( !showOptions && document.getElementById("showOptions").checked) {
-          showOptionForms();
-          showOptions = true;
-        } else if ( showOptions && !(document.getElementById("showOptions").checked)) {
-          hideOptionForms();
-          showOptions = false;
-        }
       }
+
     -->
     </script>
     <div id="wrapper">
@@ -452,13 +459,10 @@
       </div>
       <div id="maincontainer">
         <form id="Setting">
-          <input type="radio" name="debugFileLoader" id="showDebug">debug
-          <input type="radio" name="debugFileLoader" id="hideDebug" checked>no debug
-          <br>
-          <input type="radio" name="optionForms" id="showOptions">show options
-          <input type="radio" name="optionForms" id="hideOptions" checked>hide options
-          <br>
+          <input type="button" id="buttonForDebug" value="debug" onclick="enableDebug()">
+          <input type="button" id="buttonForOptions" value="show options" onclick="showOptionForms()">
         </form>
+        <br>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="pathToIds">
           <input type="button" id="buttonToLoadIds" value="load ids.txt" onclick="loadIdsFile()">
@@ -485,7 +489,6 @@
       </div>
     </div>
     <script>
-      document.getElementById("Setting").addEventListener("change", function() {updateSetting();}, false);
       document.getElementById("buttonToLoadIds").disabled = false;
       document.getElementById("buttonToParseIds").disabled = true;
       document.getElementById("buttonToLoadUnihan").disabled = false;
