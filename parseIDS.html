@@ -309,7 +309,7 @@
           var ustr = inArr[i].split("(");
           var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
           var subDir = uhex.slice(0,-2);
-          outArr.push( inArr[i] + "<img height=50 align=\"middle\" src=\"" + pngDir + "/" + subDir + "/U+" + uhex + ".png\">" );
+          outArr.push( "<tr><td>" + inArr[i] + "</td><td><img height=50 align=\"middle\" src=\"" + pngDir + "/" + subDir + "/U+" + uhex + ".png\"></td></tr>" );
         }
         return outArr;
       }
@@ -357,7 +357,7 @@
 
         if (usePng) {
           candidates = addPngTagToUcsArray(candidates);
-          document.getElementById("loadedIds").innerHTML = candidates.join("<br>");
+          document.getElementById("loadedIds").innerHTML = "<table>" + candidates.join("") + "</table>";
         } else {
           document.getElementById("loadedIds").innerHTML = candidates.join(", ");
         }
