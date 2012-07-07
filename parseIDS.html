@@ -39,6 +39,7 @@
       var pngDir = null;
       var usePng = false;
       var sideBarWidthPercent = 20;
+      var sortTotalStroke = false;
 
       function deleteAllNodeInElm(elmName) {
         var sidebarObj = document.getElementById(elmName);
@@ -380,7 +381,7 @@
           results = new Array();
         }
 
-        if ( hasUnihanDB ) {
+        if ( hasUnihanDB && sortTotalStroke ) {
           candidates = candidates.sort(function(a, b) {
             return (unihanDB["kTotalStrokes"][a] - unihanDB["kTotalStrokes"][b]);
           });
@@ -503,7 +504,6 @@
 
         // ----
 
-        document.getElementById("buttonForOptions").value = "hide options";
         document.getElementById("buttonForOptions").onclick = function() { hideOptionForms(); };
         showOptions = true;
       }
@@ -546,6 +546,14 @@
         }
       }
 
+      function updateSort() {
+        if (document.getElementById("chkboxForTotalStrokeSort").checked) {
+          sortTotalStroke = true;
+        } else {
+          sortTotalStroke = false;
+        }
+      }
+
     -->
     </script>
     <div id="wrapper">
@@ -572,6 +580,7 @@
           <input type="file" name="pathToUnihan">
           <input type="button" id="buttonToLoadUnihan" value="load Unihan.txt" onclick="loadUnihanFile()">
           <input type="button" id="buttonToParseUnihan" value="parse Unihan.txt" onclick="parseUnihanText()">
+          <input type="checkbox" id="chkboxForTotalStrokeSort" onclick="updateSort()">sort by total stroke
         </form>
         <form name="checkComponent" onsubmit="return false;">
           <input type="text" name="components">
