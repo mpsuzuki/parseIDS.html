@@ -383,7 +383,17 @@
 
         if ( hasUnihanDB && sortTotalStroke ) {
           candidates = candidates.sort(function(a, b) {
-            return (unihanDB["kTotalStrokes"][a] - unihanDB["kTotalStrokes"][b]);
+            var tsa = unihanDB["kTotalStrokes"][a];
+            var tsb = unihanDB["kTotalStrokes"][b];
+            if (tsa != undefined && tsb != undefined) {
+              return (tsa - tsb);
+            } else if (tsa == undefined && tsb == undefined) {
+              return (a - b);
+            } else if (tsa != undefined) {
+              return -1;
+            } else {
+              return 1;
+            }
           });
         }
 
