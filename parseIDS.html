@@ -42,6 +42,7 @@
       var curPngPage = 0;
       var sideBarWidthPercent = 20;
       var sortTotalStroke = false;
+      var foundChars = null;
 
       function deleteAllNodeInElm(elmName) {
         var sidebarObj = document.getElementById(elmName);
@@ -324,6 +325,7 @@
         unihanText = "";
         document.getElementById("msgStatus").innerHTML = j + " items parsed";
         document.getElementById("buttonToParseUnihan").disabled = false;
+        document.getElementById("chkboxForTotalStrokeSort").disabled = false;
       }
 
       function addHexCodePointToUcsArray(inArr) {
@@ -364,6 +366,84 @@
         }
       }
 
+      function sortFoundCharsByTotalStrokes() {
+        if (!hasUnihanDB) {
+          return;
+        }
+        if (foundChars == null) {
+          return;
+        }
+        foundChars = foundChars.sort(function(a, b) {
+          var tsa = unihanDB["kTotalStrokes"][a];
+          var tsb = unihanDB["kTotalStrokes"][b];
+          if (tsa != undefined && tsb != undefined) {
+            return (tsa - tsb);
+          } else if (tsa == undefined && tsb == undefined) {
+            return (a - b);
+          } else if (tsa != undefined) {
+            return -1;
+          } else {
+            return 1;
+          }
+        });
+      }
+
+      function sortFoundCharsByUCS() {
+        if (foundChars == null) {
+          return;
+        }
+        var foundCharsUCS = new Array();
+        for ( var i = foundChars.length; i > 0; ) {
+          i -= 1;
+          foundCharsUCS[foundChars[i]] = ucsArrToUcs4Codepoint(foundChars[i]);
+        }
+        foundChars = foundChars.sort(function(a, b) {
+          return (foundCharsUCS[a] - foundCharsUCS[b]);
+        });
+      }
+
+      function showFoundCharsPartial() {
+        curPngPage = parseInt(document.getElementById("pngPageSelector").value, 10);
+        var arrToShow = foundChars.slice(maxPngPerPage * curPngPage, maxPngPerPage * (curPngPage + 1));
+        showFoundResult(arrToShow);
+      }
+
+      function showFoundChars() {
+        if (foundChars == null) {
+          return;
+        }
+        var arrToShow;
+        if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
+          var foundIdsHeader = document.getElementById("foundIdsHeader");
+          var pageSelector = document.getElementById("pngPageSelector");
+          if (pageSelector != undefined) {
+            foundIdsHeader.removeChild(pageSelector);
+          }
+          pageSelector = document.createElement("SELECT");
+          pageSelector.id = "pngPageSelector";
+          pageSelector.size = 1;
+          for ( var pageNum = 0; pageNum < (foundChars.length / maxPngPerPage); pageNum += 1 ) {
+            var pageSelectorItem = document.createElement("OPTION");
+            var pageSelectorItemNote = document.createTextNode(pageNum.toString(10));
+            pageSelectorItem.value = pageNum;
+            if (pageNum == curPngPage) {
+              pageSelectorItem.selected = true;
+            }
+            pageSelectorItem.appendChild(pageSelectorItemNote);
+            pageSelector.appendChild(pageSelectorItem);
+          }
+          pageSelector.addEventListener("change", function() {
+            showFoundCharsPartial();
+          });
+          document.getElementById("foundIdsHeader").appendChild(pageSelector);
+
+          showFoundCharsPartial();
+        } else {
+          arrToShow = foundChars.slice(0);
+          showFoundResult(arrToShow);
+        }
+      }
+
       function lookupComponents() {
         var components = utf16Str2UcsArr(document.checkComponent.components.value);
         var lookupDB = new Array();
@@ -395,51 +475,14 @@
           results = new Array();
         }
 
-        if ( hasUnihanDB && sortTotalStroke ) {
-          candidates = candidates.sort(function(a, b) {
-            var tsa = unihanDB["kTotalStrokes"][a];
-            var tsb = unihanDB["kTotalStrokes"][b];
-            if (tsa != undefined && tsb != undefined) {
-              return (tsa - tsb);
-            } else if (tsa == undefined && tsb == undefined) {
-              return (a - b);
-            } else if (tsa != undefined) {
-              return -1;
-            } else {
-              return 1;
-            }
-          });
+        foundChars = candidates.slice(0);
+        curPngPage = 0;
+
+        if (sortTotalStroke) {
+          sortFoundCharsByTotalStrokes();
         }
 
-        var arrToShow;
-        if (usePng && candidates.length > maxPngPerPage) {
-          var foundIdsHeader = document.getElementById("foundIdsHeader");
-          var pageSelector = document.getElementById("pngPageSelector");
-          if (pageSelector != undefined) {
-            foundIdsHeader.removeChild(pageSelector);
-          }
-          pageSelector = document.createElement("SELECT");
-          pageSelector.id = "pngPageSelector";
-          pageSelector.size = 1;
-          for ( var pageNum = 0; pageNum < (candidates.length / maxPngPerPage); pageNum += 1 ) {
-            var pageSelectorItem = document.createElement("OPTION");
-            var pageSelectorItemNote = document.createTextNode(pageNum.toString(10));
-            pageSelectorItem.value = pageNum;
-            pageSelectorItem.appendChild(pageSelectorItemNote);
-            pageSelector.appendChild(pageSelectorItem);
-          }
-          pageSelector.addEventListener("change", function() {
-            curPngPage = parseInt(document.getElementById("pngPageSelector").value, 10);
-            var arrToShow = candidates.slice(maxPngPerPage * curPngPage, maxPngPerPage * (curPngPage + 1));
-            showFoundResult(arrToShow);
-          });
-          document.getElementById("foundIdsHeader").appendChild(pageSelector);
-
-          arrToShow = candidates.slice(0, maxPngPerPage);
-        } else {
-          arrToShow = candidates.slice(0);
-        }
-        showFoundResult(arrToShow);
+        showFoundChars();
       }
 
       function decomposeSelectedComponents(wholeString, selectionStart, selectionEnd) {
@@ -489,8 +532,10 @@
       }
 
       function updateFontSize() {
-        document.getElementById("msgStatus").style.fontSize = parseInt(document.getElementById("outFontSize").value);
+        document.getElementById("foundIds").style.fontSize = parseInt(document.getElementById("outFontSize").value);
       }
+
+      hideOptionForms();
 
       function showOptionForms() {
         var formForFontSize   = document.createElement("FORM");
@@ -547,13 +592,20 @@
 
         // ----
 
-        document.getElementById("buttonForOptions").onclick = function() { hideOptionForms(); };
+        var buttonForOptions = document.getElementById("buttonForOptions");
+        if (buttonForOptions != undefined && buttonForOptions != null) {
+          buttonForOptions.onclick = function() { hideOptionForms(); };
+        }
         showOptions = true;
       }
 
       function hideOptionForms() {
         var nodeForSetting = document.getElementById("Setting");
+        if (nodeForSetting == undefined || nodeForSetting == null)
+          return;
         var chNodes = nodeForSetting.childNodes;
+        if (chNodes == undefined || chNodes == null)
+          return;
         var numChNodes = chNodes.length;
         for (var i = numChNodes; i > 0; ) {
           i -= 1;
@@ -568,8 +620,10 @@
           default:
           }
         }
-        document.getElementById("buttonForOptions").value = "show options";
-        document.getElementById("buttonForOptions").onclick = function() { showOptionForms(); };
+        var buttonForOptions = document.getElementById("buttonForOptions");
+        if (buttonForOptions != undefined && buttonForOptions != null) {
+          buttonForOptions.onclick = function() { showOptionForms(); };
+        }
         showOptions = false;
       }
 
@@ -592,9 +646,16 @@
       function updateSort() {
         if (document.getElementById("chkboxForTotalStrokeSort").checked) {
           sortTotalStroke = true;
+          if (foundChars != null) {
+            sortFoundCharsByTotalStrokes();
+          }
         } else {
           sortTotalStroke = false;
+          if (foundChars != null) {
+            sortFoundCharsByUCS();
+          }
         }
+        showFoundChars();
       }
 
     -->
@@ -650,6 +711,7 @@
       document.getElementById("buttonToParseIds").disabled = true;
       document.getElementById("buttonToLoadUnihan").disabled = false;
       document.getElementById("buttonToParseUnihan").disabled = true;
+      document.getElementById("chkboxForTotalStrokeSort").disabled = true;
     </script>
   </body>
 </html>
