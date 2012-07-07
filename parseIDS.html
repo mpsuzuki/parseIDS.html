@@ -354,7 +354,7 @@
       }
 
       function showFoundResult(arr) {
-        if (document.checkComponent.addHexUcsToResult[0].checked) {
+        if (document.getElementById("chkboxForHexUcs").checked) {
           arr = addHexCodePointToUcsArray(arr);
         }
 
@@ -691,8 +691,7 @@
           <input type="button" value="lookup" onclick="lookupComponents()">
           <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
           <br>
-          <input type="radio" name="addHexUcsToResult" value="yes">show UCS codepoint
-          <input type="radio" name="addHexUcsToResult" value="no" checked>no UCS codepoint
+          <input type="checkbox" id="chkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
           <br>
         </form>
         <div id="msgStatus">
