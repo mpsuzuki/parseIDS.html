@@ -253,6 +253,7 @@
 
       // TODO: array cannot hold more than 0xFFFF members!
       function parseIdsText() {
+        document.getElementById("buttonToParseIds").disabled = true;
         var ucsName, ucs, toks, i, j, k;
         var idsItems = idsText.split("\n");
         for ( i in idsItems ) {
@@ -264,6 +265,7 @@
 
         hasIdsDB = true;
         document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
+        document.getElementById("buttonToParseIds").disabled = false;
       }
 
       function hideAtomicIds() {
@@ -287,6 +289,7 @@
       }
 
       function parseUnihanText() {
+        document.getElementById("buttonToParseUnihan").disabled = true;
         var i, j, l, toks, u, ustr, prop, val;
         var unihanItems = unihanText.split("\n");
         j = 0;
@@ -318,6 +321,7 @@
         unihanText = "";
         // document.getElementById("loadedIds").innerHTML = unihanItems.length.toString(10) + " items parsed";
         document.getElementById("loadedIds").innerHTML = j + " items parsed";
+        document.getElementById("buttonToParseUnihan").disabled = false;
       }
 
       function addHexCodePointToUcsArray(inArr) {
