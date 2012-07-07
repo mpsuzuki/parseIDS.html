@@ -38,6 +38,8 @@
       var showOptions = false;
       var pngDir = null;
       var usePng = false;
+      var maxPngPerPage = 10;
+      var curPngPage = 0;
       var sideBarWidthPercent = 20;
       var sortTotalStroke = false;
 
@@ -245,11 +247,11 @@
       }
 
       function loadIdsFile() {
-        loadFile(document.IdsFile.pathToIds.files[0], "idsText", document.getElementById("loadedIds"), document.getElementById("buttonToLoadIds"), document.getElementById("buttonToParseIds"));
+        loadFile(document.IdsFile.pathToIds.files[0], "idsText", document.getElementById("msgStatus"), document.getElementById("buttonToLoadIds"), document.getElementById("buttonToParseIds"));
       }
 
       function loadUnihanFile() {
-        loadFile(document.UnihanFile.pathToUnihan.files[0], "unihanText", document.getElementById("loadedIds"), document.getElementById("buttonToLoadUnihan"), document.getElementById("buttonToParseUnihan"));
+        loadFile(document.UnihanFile.pathToUnihan.files[0], "unihanText", document.getElementById("msgStatus"), document.getElementById("buttonToLoadUnihan"), document.getElementById("buttonToParseUnihan"));
       }
 
       // TODO: array cannot hold more than 0xFFFF members!
@@ -265,7 +267,7 @@
         }
 
         hasIdsDB = true;
-        document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
+        document.getElementById("msgStatus").innerHTML = idsItems.length.toString(10) + " items parsed";
         document.getElementById("buttonToParseIds").disabled = false;
       }
 
@@ -320,8 +322,7 @@
         }
         hasUnihanDB = true;
         unihanText = "";
-        // document.getElementById("loadedIds").innerHTML = unihanItems.length.toString(10) + " items parsed";
-        document.getElementById("loadedIds").innerHTML = j + " items parsed";
+        document.getElementById("msgStatus").innerHTML = j + " items parsed";
         document.getElementById("buttonToParseUnihan").disabled = false;
       }
 
@@ -348,6 +349,19 @@
           outArr.push( "<tr><td>" + inArr[i] + "</td><td><img height=50 align=\"middle\" src=\"" + pngDir + "/" + subDir + "/U+" + uhex + ".png\"></td></tr>" );
         }
         return outArr;
+      }
+
+      function showFoundResult(arr) {
+        if (document.checkComponent.addHexUcsToResult[0].checked) {
+          arr = addHexCodePointToUcsArray(arr);
+        }
+
+        if (usePng) {
+          arr = addPngTagToUcsArray(arr);
+          document.getElementById("foundIdsBody").innerHTML = "<table>" + arr.join("") + "</table>";
+        } else {
+          document.getElementById("foundIdsBody").innerHTML = arr.join(", ");
+        }
       }
 
       function lookupComponents() {
@@ -397,16 +411,35 @@
           });
         }
 
-        if (document.checkComponent.addHexUcsToResult[0].checked) {
-          candidates = addHexCodePointToUcsArray(candidates);
-        }
+        var arrToShow;
+        if (usePng && candidates.length > maxPngPerPage) {
+          var foundIdsHeader = document.getElementById("foundIdsHeader");
+          var pageSelector = document.getElementById("pngPageSelector");
+          if (pageSelector != undefined) {
+            foundIdsHeader.removeChild(pageSelector);
+          }
+          pageSelector = document.createElement("SELECT");
+          pageSelector.id = "pngPageSelector";
+          pageSelector.size = 1;
+          for ( var pageNum = 0; pageNum < (candidates.length / maxPngPerPage); pageNum += 1 ) {
+            var pageSelectorItem = document.createElement("OPTION");
+            var pageSelectorItemNote = document.createTextNode(pageNum.toString(10));
+            pageSelectorItem.value = pageNum;
+            pageSelectorItem.appendChild(pageSelectorItemNote);
+            pageSelector.appendChild(pageSelectorItem);
+          }
+          pageSelector.addEventListener("change", function() {
+            curPngPage = parseInt(document.getElementById("pngPageSelector").value, 10);
+            var arrToShow = candidates.slice(maxPngPerPage * curPngPage, maxPngPerPage * (curPngPage + 1));
+            showFoundResult(arrToShow);
+          });
+          document.getElementById("foundIdsHeader").appendChild(pageSelector);
 
-        if (usePng) {
-          candidates = addPngTagToUcsArray(candidates);
-          document.getElementById("loadedIds").innerHTML = "<table>" + candidates.join("") + "</table>";
+          arrToShow = candidates.slice(0, maxPngPerPage);
         } else {
-          document.getElementById("loadedIds").innerHTML = candidates.join(", ");
+          arrToShow = candidates.slice(0);
         }
+        showFoundResult(arrToShow);
       }
 
       function decomposeSelectedComponents(wholeString, selectionStart, selectionEnd) {
@@ -451,12 +484,12 @@
           formElement.value = decomposeSelectedComponents(formElement.value, selectionStart, selectionEnd);
 
         } else {
-          document.getElementById("loadedIds").innerHTML = "decomposition is not available on this system";
+          document.getElementById("msgStatus").innerHTML = "decomposition is not available on this system";
         }
       }
 
       function updateFontSize() {
-        document.getElementById("loadedIds").style.fontSize = parseInt(document.getElementById("outFontSize").value);
+        document.getElementById("msgStatus").style.fontSize = parseInt(document.getElementById("outFontSize").value);
       }
 
       function showOptionForms() {
@@ -601,7 +634,12 @@
           <input type="radio" name="addHexUcsToResult" value="no" checked>no UCS codepoint
           <br>
         </form>
-        <div id="loadedIds">
+        <div id="msgStatus">
+        </div>
+        <div id="foundIds">
+          <div id="foundIdsHeader"></div>
+          <div id="foundIdsBody"></div>
+          <div id="foundIdsFooter"></div>
         </div>
       </div>
       <div id="footer">
