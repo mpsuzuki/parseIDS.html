@@ -409,16 +409,50 @@
       }
 
       function showFoundChars() {
+        var err;
         if (foundChars == null) {
           return;
         }
         var arrToShow;
+        var foundIdsHeader = document.getElementById("foundIdsHeader");
         if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
-          var foundIdsHeader = document.getElementById("foundIdsHeader");
-          var pageSelector = document.getElementById("pngPageSelector");
-          if (pageSelector != undefined) {
-            foundIdsHeader.removeChild(pageSelector);
+          try { foundIdsHeader.removeChild(document.getElementById("prevPngPage")); } catch (err) {}
+          try { foundIdsHeader.removeChild(document.getElementById("pngPageSelector")); } catch (err) {}
+          try { foundIdsHeader.removeChild(document.getElementById("nextPngPage")); } catch (err) {}
+
+          var pagePrev = document.createElement("INPUT");
+          pagePrev.type = "button";
+          pagePrev.id = "prevPngPage";
+          pagePrev.value = "prev";
+          pagePrev.onclick = function() {
+            var err;
+            var i = curPngPage - 1;
+            try {
+              document.getElementById("pngPageSelector").childNodes[i].selected = true;
+            }
+            catch (err) {
+              return;
+            }
+            curPngPage = i;
+            showFoundCharsPartial();
           }
+
+          var pageNext = document.createElement("INPUT");
+          pageNext.type = "button";
+          pageNext.id = "nextPngPage";
+          pageNext.value = "next";
+          pageNext.onclick = function() {
+            var i = curPngPage + 1;
+            try {
+              document.getElementById("pngPageSelector").childNodes[i].selected = true;
+            }
+            catch (err) {
+              return;
+            }
+            curPngPage = i;
+            showFoundCharsPartial();
+          }
+
           pageSelector = document.createElement("SELECT");
           pageSelector.id = "pngPageSelector";
           pageSelector.size = 1;
@@ -435,10 +469,16 @@
           pageSelector.addEventListener("change", function() {
             showFoundCharsPartial();
           });
+
+          document.getElementById("foundIdsHeader").appendChild(pagePrev);
           document.getElementById("foundIdsHeader").appendChild(pageSelector);
+          document.getElementById("foundIdsHeader").appendChild(pageNext);
 
           showFoundCharsPartial();
         } else {
+          try { foundIdsHeader.removeChild(document.getElementById("prevPngPage")); }     catch (err) {}
+          try { foundIdsHeader.removeChild(document.getElementById("pngPageSelector")); } catch (err) {}
+          try { foundIdsHeader.removeChild(document.getElementById("nextPngPage")); }     catch (err) {}
           arrToShow = foundChars.slice(0);
           showFoundResult(arrToShow);
         }
