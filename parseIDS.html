@@ -53,7 +53,9 @@
       var showDebug = false;
       var showOptions = false;
       var usePng = false;
-      var maxPngPerPage = 10;
+      var maxPngPerColumn = 10;
+      var maxPngColumnPerPage = 2;
+      var pngHeight = 50;
       var curPage = 0;
       var sideBarWidthPercent = 20;
       var sortTotalStroke = false;
@@ -299,13 +301,22 @@
       }
 
       function addPngTagToUcsArray(inArr) {
-        var outArr = new Array();
         var pngDir = document.getElementById("PngDir").value;
-        for ( var i in inArr ) {
-          var ustr = inArr[i].split("(");
-          var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
-          var subDir = uhex.slice(0,-2);
-          outArr.push( "<tr><td>" + inArr[i] + "</td><td><img height=50 align=\"middle\" src=\"" + pngDir + "/" + subDir + "/U+" + uhex + ".png\"></td></tr>" );
+        var outArr = new Array();
+        var nArr = inArr.length;
+        for ( var y = 0; y < maxPngPerColumn; y += 1 ) {
+          var tblLine = "<tr>";
+          for ( var x = 0; x < maxPngColumnPerPage; x += 1 ) {
+            var i = y + ( x * maxPngPerColumn );
+            if (i < inArr.length) {
+              var ustr = inArr[i].split("(");
+              var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
+              var subDir = uhex.slice(0,-2);
+              tblLine += "<td>" + inArr[i] + "</td><td><img height=" + pngHeight + " align=\"middle\" src=\"" + pngDir + "/" + subDir + "/U+" + uhex + ".png\"></td>";
+            }
+          }
+          tblLine += "</tr>";
+          outArr.push( tblLine );
         }
         return outArr;
       }
@@ -360,7 +371,7 @@
       }
 
       function showFoundCharsPartial() {
-        var arrToShow = foundChars.slice(maxPngPerPage * curPage, maxPngPerPage * (curPage + 1));
+        var arrToShow = foundChars.slice(maxPngPerColumn * maxPngColumnPerPage * curPage, maxPngPerColumn * maxPngColumnPerPage * (curPage + 1));
         showFoundResult(arrToShow);
       }
 
@@ -395,8 +406,8 @@
         }
         var arrToShow;
         var foundIdsHeader = document.getElementById("FoundIdsHeader");
-        if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
-          updatePageSelectors(foundChars.length / maxPngPerPage);
+        if (usePng && foundChars != null && foundChars.length > (maxPngPerColumn * maxPngColumnPerPage)) {
+          updatePageSelectors(foundChars.length / (maxPngPerColumn * maxPngColumnPerPage));
           rollPageNavigators("block");
           showFoundCharsPartial();
         } else {
@@ -515,7 +526,7 @@
             sortFoundCharsByUCS();
           }
         }
-        if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
+        if (usePng && foundChars != null && foundChars.length > (maxPngPerColumn * maxPngColumnPerPage)) {
           rollPageNavigators("block");
           showFoundCharsPartial();
         } else {
@@ -601,6 +612,10 @@
         usePng = obj.checked;
       }
 
+      function updatePngHeight() {
+        pngHeight = parseInt(this.value, 10);
+      }
+
     -->
     </script>
     <div id="Wrapper">
@@ -636,6 +651,14 @@
           </select>
           <br>
           <input type="text" id="PngDir"> dirname for PNG files
+          <select id="PngHeight">
+            <option value="20">20
+            <option value="30">30
+            <option value="40">40
+            <option value="50" selected>50
+            <option value="60">60
+            <option value="70">70
+          </select>
           <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
         </div>
         <form name="IdsFile" onsubmit="return false;">
@@ -680,6 +703,7 @@
       document.getElementById("PageSelectorHeader").addEventListener("change", movePageBySelector);
       document.getElementById("PageSelectorFooter").addEventListener("change", movePageBySelector);
       document.getElementById("FontSize").addEventListener("change", updateFontSize);
+      document.getElementById("PngHeight").addEventListener("change", updatePngHeight);
       elmSideBar = document.getElementById("SideBar");
       elmOptionForms = document.getElementById("OptionForms");
       elmMsgStatus = document.getElementById("MsgStatus");
