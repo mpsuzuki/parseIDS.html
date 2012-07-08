@@ -18,7 +18,7 @@
       margin-left: 1%;
       float: left;
     }
-    #sidebar {
+    #sideBar {
       text-align: left;
       width: 20%;
       float: left;
@@ -45,24 +45,24 @@
       var foundChars = null;
 
       function deleteAllNodeInElm(elmName) {
-        var sidebarObj = document.getElementById(elmName);
-        var chNodes = sidebarObj.childNodes;
+        var sideBarObj = document.getElementById(elmName);
+        var chNodes = sideBarObj.childNodes;
         var numChNodes = chNodes.length;
         for (var i = numChNodes; i > 0; ) {
           i -= 1;
-          sidebarObj.removeChild(chNodes[i]);
+          sideBarObj.removeChild(chNodes[i]);
         }
       }
 
       function shrinkSideBar() {
-        deleteAllNodeInElm("sidebarTop");
-        deleteAllNodeInElm("sidebarBody");
+        deleteAllNodeInElm("sideBarTop");
+        deleteAllNodeInElm("sideBarBody");
        
-        document.getElementById("sidebar").style.width = "0%";
+        document.getElementById("sideBar").style.width = "0%";
       }
 
       function expandSideBar() {
-        document.getElementById("sidebar").style.width = sideBarWidthPercent.toString(10) + "%";
+        document.getElementById("sideBar").style.width = sideBarWidthPercent.toString(10) + "%";
 
         var formAtomicIds = document.createElement("FORM");
         var buttonAtomicIds = document.createElement("INPUT");
@@ -72,7 +72,7 @@
         buttonAtomicIds.onclick = function() { showAtomicIds(); };
         formAtomicIds.appendChild(buttonAtomicIds);
 
-        document.getElementById("sidebarTop").appendChild(formAtomicIds);
+        document.getElementById("sideBarTop").appendChild(formAtomicIds);
       }
 
       function updateSideBar() {
@@ -275,7 +275,7 @@
       function hideAtomicIds() {
         document.getElementById("switchAtomicIds").value = "show atomic IDS";
         document.getElementById("switchAtomicIds").onclick = function() { showAtomicIds(); };
-        document.getElementById("sidebarBody").innerHTML = "";
+        document.getElementById("sideBarBody").innerHTML = "";
       }
 
       function showAtomicIds() {
@@ -287,7 +287,7 @@
             }
           }
         }
-        document.getElementById("sidebarBody").innerHTML = atomicIds.join(", ");
+        document.getElementById("sideBarBody").innerHTML = atomicIds.join(", ");
         document.getElementById("switchAtomicIds").value = "hide atomic IDS";
         document.getElementById("switchAtomicIds").onclick = function() { hideAtomicIds(); };
       }
@@ -703,17 +703,17 @@
     <div id="wrapper">
       <div id="header">
       </div>
-      <div id="sidebar">
-        <div id="sidebarTop">
+      <div id="sideBar">
+        <div id="sideBarTop">
         </div>
-        <div id="sidebarBody">
+        <div id="sideBarBody">
         </div>
       </div>
       <div id="maincontainer">
         <form id="Setting">
           <input type="checkbox" id="chkboxForDebug"   onclick="updateDebug()">debug
           <input type="checkbox" id="chkboxForOptions" onclick="updateOptionForms()">show options
-          <input type="checkbox" id="chkboxForSideBar" onclick="updateSideBar()">show sidebar
+          <input type="checkbox" id="chkboxForSideBar" onclick="updateSideBar()">show sideBar
         </form>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="pathToIds">
