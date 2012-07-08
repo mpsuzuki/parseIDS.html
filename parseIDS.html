@@ -6,25 +6,35 @@
     body {
       text-align: center;
     }
-    #wrapper {
+    #Wrapper {
       text-align: left;
       width: 100%;
       margin: 0;
       auto;
     }
-    #mainContainer {
+    #SideBar {
+      text-align: left;
+      width: 20%;
+      float: left;
+      background-color: AFAFAF;
+      display: none;
+    }
+    #MainContainer {
       text-align: left;
       width: 79%;
       margin-left: 1%;
       float: left;
     }
-    #sideBar {
-      text-align: left;
-      width: 20%;
-      float: left;
-      background-color: AFAFAF;
+    #OptionForms {
+      display: none;
     }
-    #footer {
+    #FoundIdsNavigatorHeader {
+      display: none;
+    }
+    #FoundIdsNavigatorFooter {
+      display: none;
+    }
+    #Footer {
       clear: both;
       width: 100%;
     }
@@ -34,54 +44,20 @@
   <body>
     <script type="text/javascript">
     <!--
+      // -- constant DOM element
+      var elmSideBar = null;
+      var elmOptionForms = null;
+      var elmMsgStatus = null;
+
+      // -- global variables
       var showDebug = false;
       var showOptions = false;
-      var pngDir = null;
       var usePng = false;
       var maxPngPerPage = 10;
-      var curPngPage = 0;
+      var curPage = 0;
       var sideBarWidthPercent = 20;
       var sortTotalStroke = false;
       var foundChars = null;
-
-      function deleteAllNodeInElm(elmName) {
-        var sideBarObj = document.getElementById(elmName);
-        var chNodes = sideBarObj.childNodes;
-        var numChNodes = chNodes.length;
-        for (var i = numChNodes; i > 0; ) {
-          i -= 1;
-          sideBarObj.removeChild(chNodes[i]);
-        }
-      }
-
-      function shrinkSideBar() {
-        deleteAllNodeInElm("sideBarTop");
-        deleteAllNodeInElm("sideBarBody");
-       
-        document.getElementById("sideBar").style.width = "0%";
-      }
-
-      function expandSideBar() {
-        document.getElementById("sideBar").style.width = sideBarWidthPercent.toString(10) + "%";
-
-        var formAtomicIds = document.createElement("FORM");
-        var buttonAtomicIds = document.createElement("INPUT");
-        buttonAtomicIds.type = "button";
-        buttonAtomicIds.id = "switchAtomicIds";
-        buttonAtomicIds.value = "show atomic IDS";
-        buttonAtomicIds.onclick = function() { showAtomicIds(); };
-        formAtomicIds.appendChild(buttonAtomicIds);
-
-        document.getElementById("sideBarTop").appendChild(formAtomicIds);
-      }
-
-      function updateSideBar() {
-        if (document.getElementById("chkboxForSideBar").checked) {
-          expandSideBar();
-        } else {
-          shrinkSideBar();
-        }
-      }
 
       function utf16Str2UcsArr(ustr) {
         var i, c, arr;
@@ -248,16 +224,15 @@
       }
 
       function loadIdsFile() {
-        loadFile(document.IdsFile.pathToIds.files[0], "idsText", document.getElementById("msgStatus"), document.getElementById("buttonToLoadIds"), document.getElementById("buttonToParseIds"));
+        loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmMsgStatus, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
       }
 
       function loadUnihanFile() {
-        loadFile(document.UnihanFile.pathToUnihan.files[0], "unihanText", document.getElementById("msgStatus"), document.getElementById("buttonToLoadUnihan"), document.getElementById("buttonToParseUnihan"));
+        loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmMsgStatus, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
       }
 
-      // TODO: array cannot hold more than 0xFFFF members!
       function parseIdsText() {
-        document.getElementById("buttonToParseIds").disabled = true;
+        document.getElementById("ButtonToParseIds").disabled = true;
         var ucsName, ucs, toks, i, j, k;
         var idsItems = idsText.split("\n");
         for ( i in idsItems ) {
@@ -268,32 +243,13 @@
         }
 
         hasIdsDB = true;
-        document.getElementById("msgStatus").innerHTML = idsItems.length.toString(10) + " items parsed";
-        document.getElementById("buttonToParseIds").disabled = false;
-      }
-
-      function hideAtomicIds() {
-        document.getElementById("switchAtomicIds").value = "show atomic IDS";
-        document.getElementById("switchAtomicIds").onclick = function() { showAtomicIds(); };
-        document.getElementById("sideBarBody").innerHTML = "";
-      }
-
-      function showAtomicIds() {
-        if ( hasIdsDB ) {
-          var atomicIds = new Array();
-          for ( ucs in idsDB ) {
-            if ( 1 == idsDB[ucs].idsArrays.length && ucs == idsDB[ucs].idsArrays[0] ) {
-              atomicIds.push(ucs);
-            }
-          }
-        }
-        document.getElementById("sideBarBody").innerHTML = atomicIds.join(", ");
-        document.getElementById("switchAtomicIds").value = "hide atomic IDS";
-        document.getElementById("switchAtomicIds").onclick = function() { hideAtomicIds(); };
+        elmMsgStatus.innerHTML = idsItems.length.toString(10) + " items parsed";
+        document.getElementById("ButtonToParseIds").disabled = false;
+        document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
 
       function parseUnihanText() {
-        document.getElementById("buttonToParseUnihan").disabled = true;
+        document.getElementById("ButtonToParseUnihan").disabled = true;
         var i, j, l, toks, u, ustr, prop, val;
         var unihanItems = unihanText.split("\n");
         j = 0;
@@ -323,9 +279,9 @@
         }
         hasUnihanDB = true;
         unihanText = "";
-        document.getElementById("msgStatus").innerHTML = j + " items parsed";
-        document.getElementById("buttonToParseUnihan").disabled = false;
-        document.getElementById("chkboxForTotalStrokeSort").disabled = false;
+        elmMsgStatus.innerHTML = j + " items parsed";
+        document.getElementById("ButtonToParseUnihan").disabled = false;
+        document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
 
       function addHexCodePointToUcsArray(inArr) {
@@ -344,6 +300,7 @@
 
       function addPngTagToUcsArray(inArr) {
         var outArr = new Array();
+        var pngDir = document.getElementById("PngDir").value;
         for ( var i in inArr ) {
           var ustr = inArr[i].split("(");
           var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
@@ -354,15 +311,15 @@
       }
 
       function showFoundResult(arr) {
-        if (document.getElementById("chkboxForHexUcs").checked) {
+        if (document.getElementById("ChkboxForHexUcs").checked) {
           arr = addHexCodePointToUcsArray(arr);
         }
 
         if (usePng) {
           arr = addPngTagToUcsArray(arr);
-          document.getElementById("foundIdsBody").innerHTML = "<table>" + arr.join("") + "</table>";
+          document.getElementById("FoundIdsBody").innerHTML = "<table>" + arr.join("") + "</table>";
         } else {
-          document.getElementById("foundIdsBody").innerHTML = arr.join(", ");
+          document.getElementById("FoundIdsBody").innerHTML = arr.join(", ");
         }
       }
 
@@ -403,9 +360,32 @@
       }
 
       function showFoundCharsPartial() {
-        curPngPage = parseInt(document.getElementById("pngPageSelector").value, 10);
-        var arrToShow = foundChars.slice(maxPngPerPage * curPngPage, maxPngPerPage * (curPngPage + 1));
+        var arrToShow = foundChars.slice(maxPngPerPage * curPage, maxPngPerPage * (curPage + 1));
         showFoundResult(arrToShow);
+      }
+
+      function rollPageNavigators(attr) {
+        document.getElementById("FoundIdsNavigatorHeader").style.display = attr;
+        document.getElementById("FoundIdsNavigatorFooter").style.display = attr;
+      }
+
+      function updateAPageSelector(pageSelector, maxPages) {
+        var curNodes = pageSelector.childNodes;
+        if ( curNodes.length > maxPages ) {
+          for ( var i = curNodes.length; i > maxPages; ) {
+            i -= 1;
+            pageSelector.removeChild(curNodes[i]);
+          }
+        } else if ( curNodes.length < maxPages ) {
+          for ( var i = curNodes.length; i < maxPages; i += 1 ) {
+            pageSelector.innerHTML += "<option value=\"" + i.toString(10) + "\">" + i.toString(10);
+          }
+        }
+      }
+
+      function updatePageSelectors(maxPages) {
+        updateAPageSelector(document.getElementById("PageSelectorHeader"), maxPages);
+        updateAPageSelector(document.getElementById("PageSelectorFooter"), maxPages);
       }
 
       function showFoundChars() {
@@ -414,86 +394,32 @@
           return;
         }
         var arrToShow;
-        var foundIdsHeader = document.getElementById("foundIdsHeader");
+        var foundIdsHeader = document.getElementById("FoundIdsHeader");
         if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
-          try { foundIdsHeader.removeChild(document.getElementById("prevPngPage")); } catch (err) {}
-          try { foundIdsHeader.removeChild(document.getElementById("pngPageSelector")); } catch (err) {}
-          try { foundIdsHeader.removeChild(document.getElementById("nextPngPage")); } catch (err) {}
-
-          var pagePrev = document.createElement("INPUT");
-          pagePrev.type = "button";
-          pagePrev.id = "prevPngPage";
-          pagePrev.value = "prev";
-          pagePrev.onclick = function() {
-            var err;
-            var i = curPngPage - 1;
-            try {
-              document.getElementById("pngPageSelector").childNodes[i].selected = true;
-            }
-            catch (err) {
-              return;
-            }
-            curPngPage = i;
-            showFoundCharsPartial();
-          }
-
-          var pageNext = document.createElement("INPUT");
-          pageNext.type = "button";
-          pageNext.id = "nextPngPage";
-          pageNext.value = "next";
-          pageNext.onclick = function() {
-            var i = curPngPage + 1;
-            try {
-              document.getElementById("pngPageSelector").childNodes[i].selected = true;
-            }
-            catch (err) {
-              return;
-            }
-            curPngPage = i;
-            showFoundCharsPartial();
-          }
-
-          pageSelector = document.createElement("SELECT");
-          pageSelector.id = "pngPageSelector";
-          pageSelector.size = 1;
-          for ( var pageNum = 0; pageNum < (foundChars.length / maxPngPerPage); pageNum += 1 ) {
-            var pageSelectorItem = document.createElement("OPTION");
-            var pageSelectorItemNote = document.createTextNode(pageNum.toString(10));
-            pageSelectorItem.value = pageNum;
-            if (pageNum == curPngPage) {
-              pageSelectorItem.selected = true;
-            }
-            pageSelectorItem.appendChild(pageSelectorItemNote);
-            pageSelector.appendChild(pageSelectorItem);
-          }
-          pageSelector.addEventListener("change", function() {
-            showFoundCharsPartial();
-          });
-
-          document.getElementById("foundIdsHeader").appendChild(pagePrev);
-          document.getElementById("foundIdsHeader").appendChild(pageSelector);
-          document.getElementById("foundIdsHeader").appendChild(pageNext);
-
+          updatePageSelectors(foundChars.length / maxPngPerPage);
+          rollPageNavigators("block");
           showFoundCharsPartial();
         } else {
-          try { foundIdsHeader.removeChild(document.getElementById("prevPngPage")); }     catch (err) {}
-          try { foundIdsHeader.removeChild(document.getElementById("pngPageSelector")); } catch (err) {}
-          try { foundIdsHeader.removeChild(document.getElementById("nextPngPage")); }     catch (err) {}
+          rollPageNavigators("none");
           arrToShow = foundChars.slice(0);
           showFoundResult(arrToShow);
         }
       }
 
       function lookupComponents() {
-        var components = utf16Str2UcsArr(document.checkComponent.components.value);
+        var components = utf16Str2UcsArr(document.CheckComponent.Components.value);
         var lookupDB = new Array();
         var candidates = new Array();
         var results = new Array();
-        var i, c, u;
+        var ignoredChars = new Array;
+        var i, c, d, u;
 
         for ( i in components ) {
           c = components[i];
-          if ( lookupDB[c] == undefined ) {
+          d = idsDB[c];
+          if ( d == undefined || d == null ) {
+            ignoredChars.push(c);
+          } else if ( lookupDB[c] == undefined ) {
             lookupDB[c] = 1;
           } else {
             lookupDB[c] += 1;
@@ -515,8 +441,14 @@
           results = new Array();
         }
 
+        elmMsgStatus.innerHTML = "";
+        if (ignoredChars.length > 0) {
+          elmMsgStatus.innerHTML += "\"" + ignoredChars.join("\", \"") + "\" are ignored in search<br>";
+        }
+        elmMsgStatus.innerHTML += candidates.length.toString(10) + " characters are found";
+
         foundChars = candidates.slice(0);
-        curPngPage = 0;
+        curPage = 0;
 
         if (sortTotalStroke) {
           sortFoundCharsByTotalStrokes();
@@ -567,124 +499,12 @@
           formElement.value = decomposeSelectedComponents(formElement.value, selectionStart, selectionEnd);
 
         } else {
-          document.getElementById("msgStatus").innerHTML = "decomposition is not available on this system";
-        }
-      }
-
-      function updateFontSize() {
-        document.getElementById("foundIds").style.fontSize = parseInt(document.getElementById("outFontSize").value);
-      }
-
-      hideOptionForms();
-
-      function showOptionForms() {
-        var formForFontSize   = document.createElement("FORM");
-        formForFontSize.id    = "formForFontSize";
-
-        var inputForFontSize  = document.createElement("INPUT");
-        inputForFontSize.type = "text";
-        inputForFontSize.id   = "outFontSize";
-        formForFontSize.appendChild(inputForFontSize);
-
-        var buttonForFontSize = document.createElement("INPUT");
-        buttonForFontSize.type = "button";
-        buttonForFontSize.id   = "buttonToUpdateFontSize";
-        buttonForFontSize.value = "change FontSize";
-        buttonForFontSize.onclick = function() { updateFontSize(); };
-        formForFontSize.appendChild(buttonForFontSize);
-
-        document.getElementById("Setting").appendChild(formForFontSize);
-
-        // ----
-
-        var formForPngDir = document.createElement("FORM");
-        formForPngDir.id = "formForPngDir";
-
-        var inputForPngDir = document.createElement("INPUT");
-        inputForPngDir.type = "text";
-        inputForPngDir.id = "pngDir";
-        if ( pngDir != null ) {
-          inputForPngDir.value = pngDir;
-        }
-        inputForPngDir.addEventListener("change", function() {
-          pngDir = document.getElementById("pngDir").value;
-        }, false);
-        formForPngDir.appendChild(inputForPngDir);
-
-        var textForPngDir = document.createTextNode("dirname for PNG files");
-        formForPngDir.appendChild(textForPngDir);
-
-        var chkBoxForPng = document.createElement("INPUT");
-        chkBoxForPng.type = "checkbox";
-        chkBoxForPng.id = "showPng";
-        if ( usePng ) {
-          chkBoxForPng.checked = true;
-        }
-        chkBoxForPng.addEventListener("change", function() {
-          usePng = document.getElementById("showPng").checked;
-        }, false);
-        formForPngDir.appendChild(chkBoxForPng);
-
-        var textForPng = document.createTextNode("show PNG file");
-        formForPngDir.appendChild(textForPng);
-
-        document.getElementById("Setting").appendChild(formForPngDir);
-
-        // ----
-
-        var buttonForOptions = document.getElementById("buttonForOptions");
-        if (buttonForOptions != undefined && buttonForOptions != null) {
-          buttonForOptions.onclick = function() { hideOptionForms(); };
-        }
-        showOptions = true;
-      }
-
-      function hideOptionForms() {
-        var nodeForSetting = document.getElementById("Setting");
-        if (nodeForSetting == undefined || nodeForSetting == null)
-          return;
-        var chNodes = nodeForSetting.childNodes;
-        if (chNodes == undefined || chNodes == null)
-          return;
-        var numChNodes = chNodes.length;
-        for (var i = numChNodes; i > 0; ) {
-          i -= 1;
-          var chNodeId = chNodes[i].id;
-          switch (chNodeId) {
-          case "formForFontSize":
-            nodeForSetting.removeChild(chNodes[i]);
-            break;
-          case "formForPngDir":
-            nodeForSetting.removeChild(chNodes[i]);
-            break;
-          default:
-          }
-        }
-        var buttonForOptions = document.getElementById("buttonForOptions");
-        if (buttonForOptions != undefined && buttonForOptions != null) {
-          buttonForOptions.onclick = function() { showOptionForms(); };
-        }
-        showOptions = false;
-      }
-
-      function updateOptionForms() {
-        if (document.getElementById("chkboxForOptions").checked) {
-          showOptionForms();
-        } else {
-          hideOptionForms();
-        }
-      }
-
-      function updateDebug() {
-        if (document.getElementById("chkboxForDebug").checked) {
-          showDebug = true;
-        } else {
-          showDebug = false;
+          elmMsgStatus.innerHTML = "decomposition is not available on this system";
         }
       }
 
       function updateSort() {
-        if (document.getElementById("chkboxForTotalStrokeSort").checked) {
+        if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
           sortTotalStroke = true;
           if (foundChars != null) {
             sortFoundCharsByTotalStrokes();
@@ -695,62 +515,174 @@
             sortFoundCharsByUCS();
           }
         }
-        showFoundChars();
+        if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
+          rollPageNavigators("block");
+          showFoundCharsPartial();
+        } else {
+          rollPageNavigators("none");
+          showFoundResult(foundChars.slice(0));
+        }
+      }
+
+      function updateDebug(obj) {
+        showDebug = obj.checked;
+      }
+
+      function rollOptionForms(obj) {
+        if (obj.checked) {
+          elmOptionForms.style.display = "block";
+        } else {
+          elmOptionForms.style.display = "none";
+        }
+      }
+
+      function rollSideBar(obj) {
+        if (obj.checked) {
+          elmSideBar.style.width = sideBarWidthPercent.toString(10) + "%";
+          elmSideBar.style.display = "block";
+        } else {
+          elmSideBar.style.width = "0%";
+          elmSideBar.style.display = "none";
+        }
+      }
+
+      function movePageByDelta(delta) {
+        var i = curPage + delta;
+        var psH = document.getElementById("PageSelectorHeader");
+        var psF = document.getElementById("PageSelectorFooter");
+        try {
+          psH.childNodes[i].selected = true;
+          psF.childNodes[i].selected = true;
+        }
+        catch (err) {
+          // no need if we don't care inconsistent current page case
+          // psH.childNodes[curPage].selected = true;
+          // psF.childNodes[curPage].selected = true;
+          return; // invalid page number (no prev or no next)
+        }
+        curPage = i;
+        showFoundCharsPartial();
+      }
+
+      function movePageBySelector() {
+        curPage = parseInt(this.value, 10);
+        var psH = document.getElementById("PageSelectorHeader");
+        var psF = document.getElementById("PageSelectorFooter");
+        psH.childNodes[curPage].selected = true;
+        psF.childNodes[curPage].selected = true;
+        showFoundCharsPartial();
+      }
+
+      function updateFontSize() {
+        document.getElementById("FoundIds").style.fontSize = parseInt(this.value, 10);
+        document.getElementById("AtomicIds").style.fontSize = parseInt(this.value, 10);
+      }
+
+      function rollAtomicIds(obj) {
+        var elmAtomicIds = document.getElementById("AtomicIds");
+        if (obj.checked) {
+          if (hasIdsDB && elmAtomicIds.innerHTML.length == 0) {
+            var ucs;
+            var atomicIds = new Array();
+            for ( ucs in idsDB ) {
+              if ( 1 == idsDB[ucs].idsArrays.length && ucs == idsDB[ucs].idsArrays[0] ) {
+                atomicIds.push(ucs);
+              }
+            }
+            elmAtomicIds.innerHTML = atomicIds.join(", ");
+          }
+          elmAtomicIds.style.display = "block";
+        } else {
+          elmAtomicIds.style.display = "none";
+        }
+      }
+
+      function updateUsePng(obj) {
+        usePng = obj.checked;
       }
 
     -->
     </script>
-    <div id="wrapper">
-      <div id="header">
+    <div id="Wrapper">
+      <div id="Header">
       </div>
-      <div id="sideBar">
-        <div id="sideBarTop">
+      <div id="SideBar">
+        <div id="SideBarTop">
+          <input type="checkbox" id="ChkboxToShowAtomicIds" onclick="rollAtomicIds(this)" disabled>show atomic ids
         </div>
-        <div id="sideBarBody">
+        <div id="SideBarBody">
+          <div id="AtomicIds"></div>
         </div>
       </div>
-      <div id="mainContainer">
+      <div id="MainContainer">
         <form id="Setting">
-          <input type="checkbox" id="chkboxForDebug"   onclick="updateDebug()">debug
-          <input type="checkbox" id="chkboxForOptions" onclick="updateOptionForms()">show options
-          <input type="checkbox" id="chkboxForSideBar" onclick="updateSideBar()">show sideBar
+          <input type="checkbox" id="ChkboxForDebug"   onclick="updateDebug(this)">debug
+          <input type="checkbox" id="ChkboxForOptions" onclick="rollOptionForms(this)">show options
+          <input type="checkbox" id="ChkboxForSideBar" onclick="rollSideBar(this)">show sideBar
         </form>
+        <div id="OptionForms">
+          <select id="FontSize">
+            <option value="10">10
+            <option value="12" selected>12
+            <option value="14">14
+            <option value="16">16
+            <option value="18">18
+            <option value="20">20
+            <option value="24">24
+            <option value="36">36
+            <option value="48">48
+            <option value="60">60
+            <option value="72">72
+          </select>
+          <br>
+          <input type="text" id="PngDir"> dirname for PNG files
+          <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
+        </div>
         <form name="IdsFile" onsubmit="return false;">
-          <input type="file" name="pathToIds">
-          <input type="button" id="buttonToLoadIds" value="load ids.txt" onclick="loadIdsFile()">
-          <input type="button" id="buttonToParseIds" value="parse ids.txt" onclick="parseIdsText()">
+          <input type="file" name="PathToIds">
+          <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="loadIdsFile()">
+          <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
         </form>
         <form name="UnihanFile" onsubmit="return false;">
-          <input type="file" name="pathToUnihan">
-          <input type="button" id="buttonToLoadUnihan" value="load Unihan.txt" onclick="loadUnihanFile()">
-          <input type="button" id="buttonToParseUnihan" value="parse Unihan.txt" onclick="parseUnihanText()">
-          <input type="checkbox" id="chkboxForTotalStrokeSort" onclick="updateSort()">sort by total stroke
+          <input type="file" name="PathToUnihan">
+          <input type="button" id="ButtonToLoadUnihan"  value="load Unihan.txt"  onclick="loadUnihanFile()">
+          <input type="button" id="ButtonToParseUnihan" value="parse Unihan.txt" onclick="parseUnihanText()" disabled>
+          <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
         </form>
-        <form name="checkComponent" onsubmit="return false;">
-          <input type="text" name="components">
+        <form name="CheckComponent" onsubmit="return false;">
+          <input type="text" name="Components">
           <input type="button" value="lookup" onclick="lookupComponents()">
           <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
           <br>
-          <input type="checkbox" id="chkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
+          <input type="checkbox" id="ChkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
           <br>
         </form>
-        <div id="msgStatus">
+        <div id="MsgStatus">
         </div>
-        <div id="foundIds">
-          <div id="foundIdsHeader"></div>
-          <div id="foundIdsBody"></div>
-          <div id="foundIdsFooter"></div>
+        <div id="FoundIds">
+          <div id="FoundIdsNavigatorHeader">
+            <input type="button" value="prev" onclick="movePageByDelta(-1)">
+            <select id="PageSelectorHeader"></select>
+            <input type="button" value="next" onclick="movePageByDelta( 1)">
+          </div>
+          <div id="FoundIdsBody"></div>
+          <div id="FoundIdsNavigatorFooter">
+            <input type="button" value="prev" onclick="movePageByDelta(-1)">
+            <select id="PageSelectorFooter"></select>
+            <input type="button" value="next" onclick="movePageByDelta( 1)">
+          </div>
         </div>
       </div>
-      <div id="footer">
+      <div id="Footer">
       </div>
     </div>
     <script>
-      document.getElementById("buttonToLoadIds").disabled = false;
-      document.getElementById("buttonToParseIds").disabled = true;
-      document.getElementById("buttonToLoadUnihan").disabled = false;
-      document.getElementById("buttonToParseUnihan").disabled = true;
-      document.getElementById("chkboxForTotalStrokeSort").disabled = true;
+      document.getElementById("PageSelectorHeader").addEventListener("change", movePageBySelector);
+      document.getElementById("PageSelectorFooter").addEventListener("change", movePageBySelector);
+      document.getElementById("FontSize").addEventListener("change", updateFontSize);
+      elmSideBar = document.getElementById("SideBar");
+      elmOptionForms = document.getElementById("OptionForms");
+      elmMsgStatus = document.getElementById("MsgStatus");
     </script>
   </body>
 </html>
