@@ -306,27 +306,6 @@
         return outArr;
       }
 
-      function addPngTagToUcsArray(inArr) {
-        var pngDir = document.getElementById("PngDir").value;
-        var outArr = new Array();
-        var nArr = inArr.length;
-        for ( var y = 0; y < maxPngPerColumn; y += 1 ) {
-          var tblLine = "<tr>";
-          for ( var x = 0; x < maxPngColumnPerPage; x += 1 ) {
-            var i = y + ( x * maxPngPerColumn );
-            if (i < inArr.length) {
-              var ustr = inArr[i].split("(");
-              var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
-              var subDir = uhex.slice(0,-2);
-              tblLine += "<td>" + inArr[i] + "</td><td><img height=" + pngHeight + " align=\"middle\" src=\"" + pngDir + "/" + subDir + "/U+" + uhex + ".png\"></td>";
-            }
-          }
-          tblLine += "</tr>";
-          outArr.push( tblLine );
-        }
-        return outArr;
-      }
-
       function fillTableWithPng(elmTable, inArr) {
         // assume cells out of maxPngColumnPerPage x maxPngPerColumn are already hidden
         var c, i, r, x, y;
