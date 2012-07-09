@@ -327,7 +327,19 @@
               img.height = pngHeight;
               img.align = "middle";
               img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
+
               c.style.display = "inline";
+              if ( x == 0 ) {
+                c.style.borderLeft = "1px solid black";
+              }
+              c.style.borderRight = "1px solid black";
+
+              if ( y == 0 ) {
+                c.style.borderTop = "1px solid black";
+              }
+              c.style.borderBottom = "1px solid black";
+
+
             } else {
               c.style.display = "none";
             }
@@ -742,7 +754,7 @@
           </div>
           <div id="FoundIdsBody"></div>
           <div id="FoundIdsTableWrap">
-            <table id="FoundIdsTable"></table>
+            <table id="FoundIdsTable" border="0" cellspacing="0"></table>
           </div>
           <div id="FoundIdsNavigatorFooter">
             <input type="button" value="prev" onclick="movePageByDelta(-1)">
