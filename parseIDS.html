@@ -308,40 +308,48 @@
 
       function fillTableWithPng(elmTable, inArr) {
         // assume cells out of maxPngColumnPerPage x maxPngPerColumn are already hidden
-        var c, i, r, x, y;
+        var i, r, x, y;
+        var ctxt, txt, cimg, img;
         var pngDir = document.getElementById("PngDir").value;
         for ( y = 0; y < maxPngPerColumn; y += 1 ) {
           r = elmTable.rows[y];
           for ( x = 0; x < maxPngColumnPerPage; x += 1 ) {
-            i = ( x * maxPngPerColumn ) + y; 
-            c = r.cells[x];
+            i = ( x * maxPngPerColumn ) + y;
+            ctxt = r.cells[x*2];
+            cimg = r.cells[(x*2) + 1];
+            txt = ctxt.childNodes[0];
+            img = cimg.childNodes[0];
             if ( i < inArr.length ) {
               var ustr = inArr[i].split("(");
               var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
               var subDir = uhex.slice(0,-2);
               var txt, img;
 
-              txt = c.childNodes[0]; // assume text
               txt.data = inArr[i];
-              img = c.childNodes[1]; // assume image
+
               img.height = pngHeight;
               img.align = "middle";
               img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
 
-              c.style.display = "inline";
+              ctxt.style.display = "inline";
+              cimg.style.display = "inline";
+
               if ( x == 0 ) {
-                c.style.borderLeft = "1px solid black";
+                ctxt.style.borderLeft = "1px solid black";
               }
-              c.style.borderRight = "1px solid black";
+              cimg.style.borderRight = "1px solid black";
 
               if ( y == 0 ) {
-                c.style.borderTop = "1px solid black";
+                ctxt.style.borderTop = "1px solid black";
+                cimg.style.borderTop = "1px solid black";
               }
-              c.style.borderBottom = "1px solid black";
+              ctxt.style.borderBottom = "1px solid black";
+              cimg.style.borderBottom = "1px solid black";
 
 
             } else {
-              c.style.display = "none";
+              ctxt.style.display = "none";
+              cimg.style.display = "none";
             }
           }
         }
@@ -359,6 +367,7 @@
         } else {
           elmFoundIdsTable.style.display = "none";
           elmFoundIdsBody.innerHTML = arr.join(", ");
+          elmFoundIdsBody.style.display = "block";
         }
       }
 
@@ -369,12 +378,13 @@
             elmTable.insertRow(-1);
           }
         }
-        if ( elmTable.rows[0].cells.length < columns ) {
+        if ( elmTable.rows[0].cells.length < (columns*2) ) {
           for ( y = 0; y < elmTable.rows.length; y += 1 ) {
             r = elmTable.rows[y];
-            for ( x = r.cells.length; x < columns; x += 1 ) {
+            for ( x = r.cells.length; x < (columns*2); x += 1 ) {
               r.insertCell(-1);
               r.lastChild.appendChild(document.createTextNode(""));
+              r.insertCell(-1);
               r.lastChild.appendChild(document.createElement("img"));
             }
           }
@@ -388,7 +398,7 @@
         for ( y = 0; y < elmTable.rows.length; y += 1 ) {
           r = elmTable.rows[y];
           for ( x = 0; x < r.cells.length; x += 1 ) {
-            if (y >= rows || x >= columns) {
+            if (y >= rows || x >= (columns*2) ) {
               r.cells[x].style.display = "";
             } else {
               r.cells[x].style.display = "none";
@@ -467,10 +477,11 @@
         if (foundChars == null) {
           return;
         }
+        var maxPngPerPage = maxPngPerColumn * maxPngColumnPerPage;
         var arrToShow;
         var foundIdsHeader = document.getElementById("FoundIdsHeader");
-        if (usePng && foundChars != null && foundChars.length > (maxPngPerColumn * maxPngColumnPerPage)) {
-          updatePageSelectors(foundChars.length / (maxPngPerColumn * maxPngColumnPerPage));
+        if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
+          updatePageSelectors(Math.ceil(foundChars.length / maxPngPerPage));
           rollPageNavigators("block");
           showFoundCharsPartial();
         } else {
