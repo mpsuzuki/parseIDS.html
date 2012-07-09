@@ -372,13 +372,14 @@
       }
 
       function expandTableMatrix(elmTable, rows, columns) {
-        var c, r, x, y;
+        var c, r, rs, x, y;
         if ( elmTable.rows.length < rows ) {
           for ( y = elmTable.rows.length; y < rows; y += 1 ) {
             elmTable.insertRow(-1);
           }
         }
-        if ( elmTable.rows[0].cells.length < (columns*2) ) {
+        rs = elmTable.rows;
+        if ( rs[rs.length - 1].cells.length < (columns*2) ) {
           for ( y = 0; y < elmTable.rows.length; y += 1 ) {
             r = elmTable.rows[y];
             for ( x = r.cells.length; x < (columns*2); x += 1 ) {
@@ -397,11 +398,15 @@
 
         for ( y = 0; y < elmTable.rows.length; y += 1 ) {
           r = elmTable.rows[y];
-          for ( x = 0; x < r.cells.length; x += 1 ) {
-            if (y >= rows || x >= (columns*2) ) {
+          for ( x = 0; x < r.cells.length; x += 2 ) {
+            if (y < rows && x < (columns*2) ) {
               r.cells[x].style.display = "";
+              r.cells[x+1].style.display = "";
             } else {
               r.cells[x].style.display = "none";
+              r.cells[x].lastChild.data = "";
+              r.cells[x+1].style.display = "none";
+              r.cells[x+1].lastChild.src = "";
             }
           }
         }
@@ -691,6 +696,16 @@
         pngHeight = parseInt(this.value, 10);
       }
 
+      function updatePngRow() {
+        maxPngPerColumn = parseInt(this.value, 10);
+        updateTableMatrix(elmFoundIdsTable, maxPngPerColumn, maxPngColumnPerPage);
+      }
+
+      function updatePngColumn() {
+        maxPngColumnPerPage = parseInt(this.value, 10);
+        updateTableMatrix(elmFoundIdsTable, maxPngPerColumn, maxPngColumnPerPage);
+      }
+
     -->
     </script>
     <div id="Wrapper">
@@ -734,6 +749,20 @@
             <option value="60">60
             <option value="70">70
           </select>
+          height of picture
+          <select id="PngRow">
+            <option value="5">5
+            <option value="10" selected>10
+            <option value="20">20
+            <option value="30">30
+          </select> nRows
+          <select id="PngColumn">
+            <option value="1">1
+            <option value="2" selected>2
+            <option value="3">3
+            <option value="4">4
+            <option value="5">5
+          </select> nColumns
           <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
         </div>
         <form name="IdsFile" onsubmit="return false;">
@@ -782,6 +811,8 @@
       document.getElementById("PageSelectorFooter").addEventListener("change", movePageBySelector);
       document.getElementById("FontSize").addEventListener("change", updateFontSize);
       document.getElementById("PngHeight").addEventListener("change", updatePngHeight);
+      document.getElementById("PngRow").addEventListener("change", updatePngRow);
+      document.getElementById("PngColumn").addEventListener("change", updatePngColumn);
       elmSideBar = document.getElementById("SideBar");
       elmAtomicIds = document.getElementById("AtomicIds");
       elmOptionForms = document.getElementById("OptionForms");
