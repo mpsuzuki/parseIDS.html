@@ -31,6 +31,9 @@
     #FoundIdsNavigatorHeader {
       display: none;
     }
+    #FoundIdsTable {
+      display: none;
+    }
     #FoundIdsNavigatorFooter {
       display: none;
     }
@@ -46,8 +49,11 @@
     <!--
       // -- constant DOM element
       var elmSideBar = null;
+      var elmAtomicIds = null;
       var elmOptionForms = null;
       var elmMsgStatus = null;
+      var elmFoundIdsBody = null;
+      var elmFoundIdsTable = null;
 
       // -- global variables
       var showDebug = false;
@@ -321,16 +327,82 @@
         return outArr;
       }
 
+      function fillTableWithPng(elmTable, inArr) {
+        // assume cells out of maxPngColumnPerPage x maxPngPerColumn are already hidden
+        var c, i, r, x, y;
+        var pngDir = document.getElementById("PngDir").value;
+        for ( y = 0; y < maxPngPerColumn; y += 1 ) {
+          r = elmTable.rows[y];
+          for ( x = 0; x < maxPngColumnPerPage; x += 1 ) {
+            i = ( x * maxPngPerColumn ) + y; 
+            c = r.cells[x];
+            if ( i < inArr.length ) {
+              var ustr = inArr[i].split("(");
+              var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
+              var subDir = uhex.slice(0,-2);
+              var txt, img;
+
+              txt = c.childNodes[0]; // assume text
+              txt.data = inArr[i];
+              img = c.childNodes[1]; // assume image
+              img.height = pngHeight;
+              img.align = "middle";
+              img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
+              c.style.display = "inline";
+            } else {
+              c.style.display = "none";
+            }
+          }
+        }
+      }
+
       function showFoundResult(arr) {
         if (document.getElementById("ChkboxForHexUcs").checked) {
           arr = addHexCodePointToUcsArray(arr);
         }
 
         if (usePng) {
-          arr = addPngTagToUcsArray(arr);
-          document.getElementById("FoundIdsBody").innerHTML = "<table>" + arr.join("") + "</table>";
+          elmFoundIdsBody.style.display = "none";
+          fillTableWithPng(elmFoundIdsTable, arr);
+          elmFoundIdsTable.style.display = "block";
         } else {
-          document.getElementById("FoundIdsBody").innerHTML = arr.join(", ");
+          elmFoundIdsTable.style.display = "none";
+          elmFoundIdsBody.innerHTML = arr.join(", ");
+        }
+      }
+
+      function expandTableMatrix(elmTable, rows, columns) {
+        var c, r, x, y;
+        if ( elmTable.rows.length < rows ) {
+          for ( y = elmTable.rows.length; y < rows; y += 1 ) {
+            elmTable.insertRow(-1);
+          }
+        }
+        if ( elmTable.rows[0].cells.length < columns ) {
+          for ( y = 0; y < elmTable.rows.length; y += 1 ) {
+            r = elmTable.rows[y];
+            for ( x = r.cells.length; x < columns; x += 1 ) {
+              r.insertCell(-1);
+              r.lastChild.appendChild(document.createTextNode(""));
+              r.lastChild.appendChild(document.createElement("img"));
+            }
+          }
+        }
+      }
+
+      function updateTableMatrix(elmTable, rows, columns) {
+        var c, r, x, y;
+        expandTableMatrix(elmTable, rows, columns);
+
+        for ( y = 0; y < elmTable.rows.length; y += 1 ) {
+          r = elmTable.rows[y];
+          for ( x = 0; x < r.cells.length; x += 1 ) {
+            if (y >= rows || x >= columns) {
+              r.cells[x].style.display = "";
+            } else {
+              r.cells[x].style.display = "none";
+            }
+          }
         }
       }
 
@@ -585,12 +657,13 @@
       }
 
       function updateFontSize() {
-        document.getElementById("FoundIds").style.fontSize = parseInt(this.value, 10);
-        document.getElementById("AtomicIds").style.fontSize = parseInt(this.value, 10);
+        var fontSize = parseInt(this.value, 10);
+        elmAtomicIds.style.fontSize = fontSize;
+        elmFoundIdsBody.style.fontSize = fontSize;
+        elmFoundIdsTable.style.fontSize = fontSize;
       }
 
       function rollAtomicIds(obj) {
-        var elmAtomicIds = document.getElementById("AtomicIds");
         if (obj.checked) {
           if (hasIdsDB && elmAtomicIds.innerHTML.length == 0) {
             var ucs;
@@ -689,6 +762,9 @@
             <input type="button" value="next" onclick="movePageByDelta( 1)">
           </div>
           <div id="FoundIdsBody"></div>
+          <div id="FoundIdsTableWrap">
+            <table id="FoundIdsTable"></table>
+          </div>
           <div id="FoundIdsNavigatorFooter">
             <input type="button" value="prev" onclick="movePageByDelta(-1)">
             <select id="PageSelectorFooter"></select>
@@ -705,8 +781,12 @@
       document.getElementById("FontSize").addEventListener("change", updateFontSize);
       document.getElementById("PngHeight").addEventListener("change", updatePngHeight);
       elmSideBar = document.getElementById("SideBar");
+      elmAtomicIds = document.getElementById("AtomicIds");
       elmOptionForms = document.getElementById("OptionForms");
       elmMsgStatus = document.getElementById("MsgStatus");
+      elmFoundIdsBody = document.getElementById("FoundIdsBody");
+      elmFoundIdsTable = document.getElementById("FoundIdsTable");
+      updateTableMatrix(elmFoundIdsTable, maxPngPerColumn, maxPngColumnPerPage);
     </script>
   </body>
 </html>
