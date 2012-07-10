@@ -59,8 +59,8 @@
       var showDebug = false;
       var showOptions = false;
       var usePng = false;
-      var maxPngPerColumn = 10;
-      var maxPngColumnPerPage = 2;
+      var maxPngRows = 10;
+      var maxPngColumns = 2;
       var pngHeight = 50;
       var curPage = 0;
       var sideBarWidthPercent = 20;
@@ -307,14 +307,14 @@
       }
 
       function fillTableWithPng(elmTable, inArr) {
-        // assume cells out of maxPngColumnPerPage x maxPngPerColumn are already hidden
+        // assume cells out of maxPngColumns x maxPngRows are already hidden
         var i, r, x, y;
         var ctxt, txt, cimg, img;
         var pngDir = document.getElementById("PngDir").value;
-        for ( y = 0; y < maxPngPerColumn; y += 1 ) {
+        for ( y = 0; y < maxPngRows; y += 1 ) {
           r = elmTable.rows[y];
-          for ( x = 0; x < maxPngColumnPerPage; x += 1 ) {
-            i = ( x * maxPngPerColumn ) + y;
+          for ( x = 0; x < maxPngColumns; x += 1 ) {
+            i = ( x * maxPngRows ) + y;
             ctxt = r.cells[x*2];
             cimg = r.cells[(x*2) + 1];
             txt = ctxt.childNodes[0];
@@ -449,7 +449,7 @@
       }
 
       function showFoundCharsPartial() {
-        var arrToShow = foundChars.slice(maxPngPerColumn * maxPngColumnPerPage * curPage, maxPngPerColumn * maxPngColumnPerPage * (curPage + 1));
+        var arrToShow = foundChars.slice(maxPngRows * maxPngColumns * curPage, maxPngRows * maxPngColumns * (curPage + 1));
         showFoundResult(arrToShow);
       }
 
@@ -482,7 +482,7 @@
         if (foundChars == null) {
           return;
         }
-        var maxPngPerPage = maxPngPerColumn * maxPngColumnPerPage;
+        var maxPngPerPage = maxPngRows * maxPngColumns;
         var arrToShow;
         var foundIdsHeader = document.getElementById("FoundIdsHeader");
         if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
@@ -605,7 +605,7 @@
             sortFoundCharsByUCS();
           }
         }
-        if (usePng && foundChars != null && foundChars.length > (maxPngPerColumn * maxPngColumnPerPage)) {
+        if (usePng && foundChars != null && foundChars.length > (maxPngRows * maxPngColumns)) {
           rollPageNavigators("block");
           showFoundCharsPartial();
         } else {
@@ -697,13 +697,13 @@
       }
 
       function updatePngRow() {
-        maxPngPerColumn = parseInt(this.value, 10);
-        updateTableMatrix(elmFoundIdsTable, maxPngPerColumn, maxPngColumnPerPage);
+        maxPngRows = parseInt(this.value, 10);
+        updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
       }
 
       function updatePngColumn() {
-        maxPngColumnPerPage = parseInt(this.value, 10);
-        updateTableMatrix(elmFoundIdsTable, maxPngPerColumn, maxPngColumnPerPage);
+        maxPngColumns = parseInt(this.value, 10);
+        updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
       }
 
     -->
@@ -819,7 +819,7 @@
       elmStatusMsg = document.getElementById("StatusMsg");
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
-      updateTableMatrix(elmFoundIdsTable, maxPngPerColumn, maxPngColumnPerPage);
+      updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
     </script>
   </body>
 </html>
