@@ -51,7 +51,7 @@
       var elmSideBar = null;
       var elmAtomicIds = null;
       var elmOptionForms = null;
-      var elmMsgStatus = null;
+      var elmStatusMsg = null;
       var elmFoundIdsBody = null;
       var elmFoundIdsTable = null;
 
@@ -232,11 +232,11 @@
       }
 
       function loadIdsFile() {
-        loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmMsgStatus, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
+        loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
       }
 
       function loadUnihanFile() {
-        loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmMsgStatus, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
+        loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmStatusMsg, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
       }
 
       function parseIdsText() {
@@ -251,7 +251,7 @@
         }
 
         hasIdsDB = true;
-        elmMsgStatus.innerHTML = idsItems.length.toString(10) + " items parsed";
+        elmStatusMsg.innerHTML = idsItems.length.toString(10) + " items parsed";
         document.getElementById("ButtonToParseIds").disabled = false;
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
@@ -287,7 +287,7 @@
         }
         hasUnihanDB = true;
         unihanText = "";
-        elmMsgStatus.innerHTML = j + " items parsed";
+        elmStatusMsg.innerHTML = j + " items parsed";
         document.getElementById("ButtonToParseUnihan").disabled = false;
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
@@ -531,11 +531,11 @@
           results = new Array();
         }
 
-        elmMsgStatus.innerHTML = "";
+        elmStatusMsg.innerHTML = "";
         if (ignoredChars.length > 0) {
-          elmMsgStatus.innerHTML += "\"" + ignoredChars.join("\", \"") + "\" are ignored in search<br>";
+          elmStatusMsg.innerHTML += "\"" + ignoredChars.join("\", \"") + "\" are ignored in search<br>";
         }
-        elmMsgStatus.innerHTML += candidates.length.toString(10) + " characters are found";
+        elmStatusMsg.innerHTML += candidates.length.toString(10) + " characters are found";
 
         foundChars = candidates.slice(0);
         curPage = 0;
@@ -589,7 +589,7 @@
           formElement.value = decomposeSelectedComponents(formElement.value, selectionStart, selectionEnd);
 
         } else {
-          elmMsgStatus.innerHTML = "decomposition is not available on this system";
+          elmStatusMsg.innerHTML = "decomposition is not available on this system";
         }
       }
 
@@ -784,7 +784,7 @@
           <input type="checkbox" id="ChkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
           <br>
         </form>
-        <div id="MsgStatus">
+        <div id="StatusMsg">
         </div>
         <div id="FoundIds">
           <div id="FoundIdsNavigatorHeader">
@@ -816,7 +816,7 @@
       elmSideBar = document.getElementById("SideBar");
       elmAtomicIds = document.getElementById("AtomicIds");
       elmOptionForms = document.getElementById("OptionForms");
-      elmMsgStatus = document.getElementById("MsgStatus");
+      elmStatusMsg = document.getElementById("StatusMsg");
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
       updateTableMatrix(elmFoundIdsTable, maxPngPerColumn, maxPngColumnPerPage);
