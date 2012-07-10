@@ -123,8 +123,8 @@
             if (idsArr.length > 1) {
               for ( j in idsArr ) {
                 u = idsArr[j];
-                if ( idsDB[u] != undefined ) {
-                  numFound += idsDB[u].countAComponent(c);
+                if ( ucs2idsDB[u] != undefined ) {
+                  numFound += ucs2idsDB[u].countAComponent(c);
                 }
               }
             }
@@ -141,8 +141,8 @@
       // -------------------------------------------------------
       var brokenFileApi = false;
 
-      var idsDB = new Array();
-      var hasIdsDB = false;
+      var ucs2idsDB = new Array();
+      var hasUcs2IdsDB = false;
       var idsText = new String();
 
       var unihanDB = new Array();
@@ -247,10 +247,10 @@
           toks = idsItems[i].split("\t");
           ucsName = toks.shift();
           ucs = toks.shift();
-          idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
+          ucs2idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
         }
 
-        hasIdsDB = true;
+        hasUcs2IdsDB = true;
         elmStatusMsg.innerHTML = idsItems.length.toString(10) + " items parsed";
         document.getElementById("ButtonToParseIds").disabled = false;
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
@@ -506,7 +506,7 @@
 
         for ( i in components ) {
           c = components[i];
-          d = idsDB[c];
+          d = ucs2idsDB[c];
           if ( d == undefined || d == null ) {
             ignoredChars.push(c);
           } else if ( lookupDB[c] == undefined ) {
@@ -516,14 +516,14 @@
           }
         }
 
-        for ( u in idsDB ) {
+        for ( u in ucs2idsDB ) {
           candidates.push(u);
         }
 
         for ( c in lookupDB ) {
           for ( i in candidates ) {
             u = candidates[i];
-            if ( idsDB[u].countAComponent(c) >= lookupDB[c] ) {
+            if ( ucs2idsDB[u].countAComponent(c) >= lookupDB[c] ) {
               results.push(u);
             }
           }
@@ -562,8 +562,8 @@
           u = wholeString.substring(j,k);
           var curHead = wholeString.substring(0,j);
           var curTail = wholeString.substring(k,l);
-          if (idsDB[u] != undefined && idsDB[u].idss.length > 0) {
-            wholeString = curHead + "(" + idsDB[u].idss.join("|") + ")" + curTail;
+          if (ucs2idsDB[u] != undefined && ucs2idsDB[u].idss.length > 0) {
+            wholeString = curHead + "(" + ucs2idsDB[u].idss.join("|") + ")" + curTail;
           }
         }
         return wholeString;
@@ -672,11 +672,11 @@
 
       function rollAtomicIds(obj) {
         if (obj.checked) {
-          if (hasIdsDB && elmAtomicIds.innerHTML.length == 0) {
+          if (hasUcs2IdsDB && elmAtomicIds.innerHTML.length == 0) {
             var ucs;
             var atomicIds = new Array();
-            for ( ucs in idsDB ) {
-              if ( 1 == idsDB[ucs].idsArrays.length && ucs == idsDB[ucs].idsArrays[0] ) {
+            for ( ucs in ucs2idsDB ) {
+              if ( 1 == ucs2idsDB[ucs].idsArrays.length && ucs == ucs2idsDB[ucs].idsArrays[0] ) {
                 atomicIds.push(ucs);
               }
             }
