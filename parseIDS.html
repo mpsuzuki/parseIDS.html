@@ -561,14 +561,14 @@
         }
       }
 
-      function sortFoundCharsByTotalStrokes() {
+      function sortFoundCharsByTotalStrokes(foundChars) {
         if (!hasUnihanDB) {
           return;
         }
         if (foundChars == null) {
           return;
         }
-        foundChars = foundChars.sort(function(a, b) {
+        var foundCharsSorted = foundChars.sort(function(a, b) {
           var tsa = unihanDB["kTotalStrokes"][a];
           var tsb = unihanDB["kTotalStrokes"][b];
           if (tsa != undefined && tsb != undefined) {
@@ -581,9 +581,10 @@
             return 1;
           }
         });
+        return foundCharsSorted;
       }
 
-      function sortFoundCharsByUCS() {
+      function sortFoundCharsByUCS(foundChars) {
         if (foundChars == null) {
           return;
         }
@@ -592,9 +593,10 @@
           i -= 1;
           foundCharsUCS[foundChars[i]] = ucsArrToUcs4Codepoint(foundChars[i]);
         }
-        foundChars = foundChars.sort(function(a, b) {
+        var foundCharsSorted = foundChars.sort(function(a, b) {
           return (foundCharsUCS[a] - foundCharsUCS[b]);
         });
+        return foundCharsSorted;
       }
 
       function showFoundCharsPartial() {
@@ -645,12 +647,15 @@
         }
       }
 
-      function lookupComponents() {
-        var components = utf16Str2UcsArr(document.CheckComponent.Components.value);
+      function lookupComponentsInternal(queryStr) {
+        var res = {};
+        res.components = utf16Str2UcsArr(queryStr);
+        res.ignoredChars = new Array();
+        res.foundChars = [];
+
         var lookupDB = new Array();
         var candidates = new Array();
         var results = new Array();
-        var ignoredChars = new Array();
         var i, j, c, d, n, u;
 
         var useSrcFilter = new Array();
@@ -666,13 +671,13 @@
           if (document.getElementById("ChkboxForSrcM").checked) { useSrcFilter.push("M"); };
         }
 
-        for ( i in components ) {
-          c = components[i];
+        for ( i in res.components ) {
+          c = res.components[i];
           u = ucsArrToUcs4Codepoint(c);
           // n = crc2charName[u - 0x100000];
           d = ucs2idsDB[c];
           if ( d == undefined || d == null ) {
-            ignoredChars.push(c);
+            res.ignoredChars.push(c);
           } else if ( lookupDB[c] == undefined ) {
             lookupDB[c] = 1;
           } else {
@@ -680,9 +685,8 @@
           }
         }
 
-        if (ignoredChars.length == components.length) {
-          elmStatusMsg.innerHTML = "no searcheable characters are found in the query \"" + document.CheckComponent.Components.value+ "\"<br>";
-          return;
+        if (res.ignoredChars.length == res.components.length) {
+          return res;
         }
 
         for ( u in ucs2idsDB ) {
@@ -719,20 +723,29 @@
           }
           candidates = results;
         }
+        if (sortTotalStroke) {
+          res.foundChars = sortFoundCharsByTotalStrokes(candidates);
+        } else {
+          res.foundChars = candidates;
+        }
+        return res;
+      }
+
+      function lookupComponents() {
+        var res = lookupComponentsInternal(document.CheckComponent.Components.value);
+
+        if (res.ignoredChars.length == res.components.length) {
+          elmStatusMsg.innerHTML = "no searcheable characters are found in the query \"" + document.CheckComponent.Components.value+ "\"<br>";
+          return;
+        }
 
         elmStatusMsg.innerHTML = "";
-        if (ignoredChars.length > 0) {
-          elmStatusMsg.innerHTML += "\"" + ignoredChars.join("\", \"") + "\" are ignored in search<br>";
+        if (res.ignoredChars.length > 0) {
+          elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
         }
-        elmStatusMsg.innerHTML += candidates.length.toString(10) + " characters are found";
-
-        foundChars = candidates.slice(0);
+        elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
         curPage = 0;
-
-        if (sortTotalStroke) {
-          sortFoundCharsByTotalStrokes();
-        }
-
+        foundChars = res.foundChars;
         showFoundChars();
       }
 
