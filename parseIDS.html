@@ -749,6 +749,20 @@
         showFoundChars();
       }
 
+      function decomposeUtf16Str(ustr) {
+        var ucs4arr = utf16Str2UcsArr(ustr);
+        var result = new Array();
+        while (ucs4arr.length > 0) {
+          var u = ucs4arr.shift();
+          if (ucs2idsDB[u] != undefined && ucs2idsDB[u].idss.length > 0) {
+            result.push(ucs2idsDB[u].idss);
+          } else {
+            result.push(u);
+          }
+        }
+        return result;
+      }
+
       function decomposeSelectedComponents(wholeString, selectionStart, selectionEnd) {
         var c, d, u, i, j, k, l;
         for ( j = selectionEnd - 1; selectionStart <= j ; j -= 1 ) {
@@ -1055,6 +1069,28 @@
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
       updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
+
+      ws = new WebSocket("ws://localhost:12345");
+      ws.onopen = function(evt) {
+        ws.send("# Hello, supported instructions are: L(ookup) = S(earch), D(ecompose), B(ye) = Q(uit) = (e)X(it)\n");
+      };
+      ws.onmessage = function(evt) {
+         var inst = evt.data.slice(0,1);
+         var dataStr = evt.data.slice(1);
+         if (inst == "L" || inst == "S") {
+           var res = lookupComponentsInternal(dataStr).join("|");
+         } else
+         if (inst == "D") {
+           var res = decomposeUtf16Str(dataStr).join("|");
+         if (inst == "B" || inst == "Q" || inst == "X") {
+           ws.send("# Bye\n");
+           ws.close();
+         } else
+           var res = "Error: unknown instruction " + inst;
+         }
+         ws.send(res + "\n");
+      };
+
     </script>
   </body>
 </html>
