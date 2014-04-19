@@ -65,9 +65,51 @@
       var curPage = 0;
       var sideBarWidthPercent = 20;
       var sortTotalStroke = false;
-      var foundChars = null;
 
-      var DB_IDS = function() {};
+      // -------------------------------------------------------
+
+      var DB_Unihan = {};
+      DB_Unihan.isLoaded = false;
+      DB_Unihan.initByTSV = function(unihanText) {
+        var i, j, l, toks, u, ustr, prop, val;
+        var unihanItems = unihanText.split("\n");
+        j = 0;
+        for ( i in unihanItems ) {
+          if ( unihanItems[i].slice(0,2) == "U+" ) {
+            toks = unihanItems[i].split("\t");
+            l = toks[0].length;
+            u = parseInt(toks[0].slice(2,l), 16);
+            if (u < 0x10000) {
+              ustr = String.fromCharCode(u);
+            } else if (u < 0xEFFFF) {
+              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
+            } else if (u < 0x100000) {
+              continue;
+            // Unihan DB should not mention about PUA with Ch. Entity Ref.
+            // } else if (u < 0x110000) {
+            //   ustr = crc2charName[u - 0x100000];
+            } else {
+              continue;
+            }
+            prop  = toks[1];
+            val   = toks[2];
+            if ( prop != "kTotalStrokes" ) {
+              continue;
+            }
+            if ( this[prop] == undefined ) {
+              this[prop] = new Array();
+            }
+            this[prop][ustr] = parseInt(val, 10);
+            j += 1;
+          }
+        }
+        this.isLoaded = true;
+        return unihanItems.length;
+      };
+
+      // -------------------------------------------------------
+
+      var DB_IDS = {};
       DB_IDS.crc16ascii = function(s) {
         var crc = 0xFFFF;
         var j, i;
@@ -310,12 +352,28 @@
         }
         return result;
       }
+      DB_IDS.addHexCodePointToUcsArray = function(inArr) {
+        var outArr = new Array();
+        for ( var i in inArr ) {
+          var ucsInt = this.ucsArrToUcs4Codepoint(inArr[i]);
+          var ucsStr = "U+" + ucsInt.toString(16).toUpperCase();
+          if (0xFFFFF < ucsInt && ucsInt < 0x110000) {
+            ucsStr = this.crc2charName[ucsInt - 0x100000];
+          }
+          if ( !DB_Unihan.isLoaded ) {
+            outArr.push( inArr[i] + "(" + ucsStr + ")" );
+          } else if ( DB_Unihan.kTotalStrokes == undefined || inArr[i] == undefined || DB_Unihan.kTotalStrokes[inArr[i]] == undefined ) {
+            outArr.push( inArr[i] + "(" + ucsStr + ":XXX)" );
+          } else {
+            outArr.push( inArr[i] + "(" + ucsStr + ":" + DB_Unihan.kTotalStrokes[inArr[i]].toString(10) + ")" );
+          }
+        }
+        return outArr;
+      }
 
       // -------------------------------------------------------
       var brokenFileApi = false;
       var idsText = new String();
-      var unihanDB = new Array();
-      var hasUnihanDB = false;
       var unihanText = new String();
       var CJKU_SR = new String();
       var CJKU_SR_DB = new Array();
@@ -348,6 +406,11 @@
           return null;
         }
       }
+      // -------------------------------------------------------
+
+      var currentUi = {};
+      currentUi.foundChars = [];
+
       // -------------------------------------------------------
       function loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn) {
         var err;
@@ -429,40 +492,9 @@
 
       function parseUnihanText() {
         document.getElementById("ButtonToParseUnihan").disabled = true;
-        var i, j, l, toks, u, ustr, prop, val;
-        var unihanItems = unihanText.split("\n");
-        j = 0;
-        for ( i in unihanItems ) {
-          if ( unihanItems[i].slice(0,2) == "U+" ) {
-            toks = unihanItems[i].split("\t");
-            l = toks[0].length;
-            u = parseInt(toks[0].slice(2,l), 16);
-            if (u < 0x10000) {
-              ustr = String.fromCharCode(u);
-            } else if (u < 0xEFFFF) {
-              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
-            } else if (u < 0x100000) {
-              continue;
-            } else if (u < 0x110000) {
-              ustr = crc2charName[u - 0x100000];
-            } else {
-              continue;
-            }
-            prop  = toks[1];
-            val   = toks[2];
-            if ( prop != "kTotalStrokes" ) {
-              continue;
-            }
-            if ( unihanDB[prop] == undefined ) {
-              unihanDB[prop] = new Array();
-            }
-            unihanDB[prop][ustr] = parseInt(val, 10);
-            j += 1;
-          }
-        }
-        hasUnihanDB = true;
-        unihanText = "";
-        elmStatusMsg.innerHTML = j + " items parsed";
+        var numUnihanItems = DB_Unihan.initByTSV(unihanText);
+        delete unihanText;
+        elmStatusMsg.innerHTML =  numUnihanItems + " items parsed";
         document.getElementById("ButtonToParseUnihan").disabled = false;
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
@@ -492,25 +524,6 @@
           }
         }
         elmStatusMsg.innerHTML = lines.length.toString(10) + " items parsed";
-      }
-
-      function addHexCodePointToUcsArray(inArr) {
-        outArr = new Array();
-        for ( var i in inArr ) {
-          var ucsInt = DB_IDS.ucsArrToUcs4Codepoint(inArr[i]);
-          var ucsStr = "U+" + ucsInt.toString(16).toUpperCase();
-          if (0xFFFFF < ucsInt && ucsInt < 0x110000) {
-            ucsStr = crc2charName[ucsInt - 0x100000];
-          }
-          if ( !hasUnihanDB ) {
-            outArr.push( inArr[i] + "(" + ucsStr + ")" );
-          } else if ( unihanDB["kTotalStrokes"] == undefined || inArr[i] == undefined || unihanDB["kTotalStrokes"][inArr[i]] == undefined ) {
-            outArr.push( inArr[i] + "(" + ucsStr + ":XXX)" );
-          } else {
-            outArr.push( inArr[i] + "(" + ucsStr + ":" + unihanDB["kTotalStrokes"][inArr[i]].toString(10) + ")" );
-          }
-        }
-        return outArr;
       }
 
       function fillTableWithPng(elmTable, inArr) {
@@ -564,7 +577,7 @@
 
       function showFoundResult(arr) {
         if (document.getElementById("ChkboxForHexUcs").checked) {
-          arr = addHexCodePointToUcsArray(arr);
+          arr = DB_IDS.addHexCodePointToUcsArray(arr);
         }
 
         if (usePng) {
@@ -620,15 +633,15 @@
       }
 
       function sortFoundCharsByTotalStrokes(foundChars) {
-        if (!hasUnihanDB) {
+        if (!DB_Unihan.isLoaded) {
           return;
         }
         if (foundChars == null) {
           return;
         }
         var foundCharsSorted = foundChars.sort(function(a, b) {
-          var tsa = unihanDB["kTotalStrokes"][a];
-          var tsb = unihanDB["kTotalStrokes"][b];
+          var tsa = DB_Unihan.kTotalStrokes[a];
+          var tsb = DB_Unihan.kTotalStrokes[b];
           if (tsa != undefined && tsb != undefined) {
             return (tsa - tsb);
           } else if (tsa == undefined && tsb == undefined) {
@@ -658,7 +671,7 @@
       }
 
       function showFoundCharsPartial() {
-        var arrToShow = foundChars.slice(maxPngRows * maxPngColumns * curPage, maxPngRows * maxPngColumns * (curPage + 1));
+        var arrToShow = currentUi.foundChars.slice(maxPngRows * maxPngColumns * curPage, maxPngRows * maxPngColumns * (curPage + 1));
         showFoundResult(arrToShow);
       }
 
@@ -688,66 +701,21 @@
 
       function showFoundChars() {
         var err;
-        if (foundChars == null) {
+        if (!currentUi.foundChars.length) {
           return;
         }
         var maxPngPerPage = maxPngRows * maxPngColumns;
         var arrToShow;
         var foundIdsHeader = document.getElementById("FoundIdsHeader");
-        if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
-          updatePageSelectors(Math.ceil(foundChars.length / maxPngPerPage));
+        if (usePng && currentUi.foundChars != null && currentUi.foundChars.length > maxPngPerPage) {
+          updatePageSelectors(Math.ceil(currentUi.foundChars.length / maxPngPerPage));
           rollPageNavigators("block");
           showFoundCharsPartial();
         } else {
           rollPageNavigators("none");
-          arrToShow = foundChars.slice(0);
+          arrToShow = currentUi.foundChars.slice(0);
           showFoundResult(arrToShow);
         }
-      }
-
-      function lookupComponentsInternal(queryStr) {
-        var res = DB_IDS.lookupByString(queryStr);
-
-        if (res.foundChars.length == 0) {
-          return res;
-        }
-
-        if (CJKU_SR.length) {
-          if (document.getElementById("ChkboxForSrcG").checked) { useSrcFilter.push("G"); };
-          if (document.getElementById("ChkboxForSrcT").checked) { useSrcFilter.push("T"); };
-          if (document.getElementById("ChkboxForSrcJ").checked) { useSrcFilter.push("J"); };
-          if (document.getElementById("ChkboxForSrcK").checked) { useSrcFilter.push("K"); };
-          if (document.getElementById("ChkboxForSrcV").checked) { useSrcFilter.push("V"); };
-          if (document.getElementById("ChkboxForSrcH").checked) { useSrcFilter.push("H"); };
-          if (document.getElementById("ChkboxForSrcU").checked) { useSrcFilter.push("U"); };
-          if (document.getElementById("ChkboxForSrcM").checked) { useSrcFilter.push("M"); };
-
-          if (useSrcFilter.length > 0) {
-            var candidates = res.foundChars;
-            var results = new Array();
-
-            for ( i in candidates ) {
-              u = candidates[i];
-              var cjku_sr_db = CJKU_SR_DB[u];
-              if (cjku_sr_db != undefined) {
-                for ( j in useSrcFilter ) {
-                  d = useSrcFilter[j];
-                  if (cjku_sr_db[d] != undefined) {
-                    results.push(u);
-                    break;
-                  }
-                }
-              }
-            }
-            res.foundChars = results;
-          }
-        }
-        if (sortTotalStroke) {
-          res.foundChars = sortFoundCharsByTotalStrokes(res.foundChars);
-        } else {
-          res.foundChars = candidates;
-        }
-        return res;
       }
 
       function lookupComponents() {
@@ -764,7 +732,11 @@
         }
         elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
         curPage = 0;
-        foundChars = res.foundChars;
+        if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
+          currentUi.foundChars = sortFoundCharsByTotalStrokes(res.foundChars);
+        } else {
+          currentUi.foundChars = sortFoundCharsByUCS(res.foundChars);
+        }
         showFoundChars();
       }
 
@@ -801,21 +773,21 @@
       function updateSort() {
         if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
           sortTotalStroke = true;
-          if (foundChars != null) {
-            sortFoundCharsByTotalStrokes();
+          if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
+            currentUi.foundChars = sortFoundCharsByTotalStrokes(currentUi.foundChars);
           }
         } else {
           sortTotalStroke = false;
-          if (foundChars != null) {
-            sortFoundCharsByUCS();
+          if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
+            currentUi.foundChars = sortFoundCharsByUCS(currentUi.foundChars);
           }
         }
-        if (usePng && foundChars != null && foundChars.length > (maxPngRows * maxPngColumns)) {
+        if (usePng && currentUi.foundChars != null && currentUi.foundChars.length > (maxPngRows * maxPngColumns)) {
           rollPageNavigators("block");
           showFoundCharsPartial();
         } else {
           rollPageNavigators("none");
-          showFoundResult(foundChars.slice(0));
+          showFoundResult(currentUi.foundChars.slice(0));
         }
       }
 
