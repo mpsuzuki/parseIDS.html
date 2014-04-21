@@ -106,6 +106,44 @@
         this.isLoaded = true;
         return unihanItems.length;
       };
+      DB_Unihan.sortCharsByTotalStrokes = function(chars) {
+        if (!DB_Unihan.isLoaded) {
+          return chars;
+        }
+        if (chars == null) {
+          return chars;
+        }
+        var results = chars.sort(function(a, b) {
+          var tsa = DB_Unihan.kTotalStrokes[a];
+          var tsb = DB_Unihan.kTotalStrokes[b];
+          if (tsa != undefined && tsb != undefined) {
+            return (tsa - tsb);
+          } else if (tsa == undefined && tsb == undefined) {
+            return (a - b);
+          } else if (tsa != undefined) {
+            return -1;
+          } else {
+            return 1;
+          }
+        });
+        return results;
+      };
+      DB_Unihan.sortCharsByUCS = function(chars) {
+        if (chars == null) {
+          return chars;
+        }
+        var charsUcs = {};
+        for ( var i = chars.length; i > 0; ) {
+          i -= 1;
+          charsUcs[chars[i]] = DB_IDS.ucsArrToUcs4Codepoint(chars[i]);
+        }
+        var charsSorted = chars.sort(function(a, b) {
+          return (charsUcs[a] - charsUcs[b]);
+        });
+        return charsSorted;
+      }
+
+
 
       // -------------------------------------------------------
 
@@ -280,11 +318,10 @@
         for ( i in idsItems ) {
           toks = idsItems[i].split("\t");
           if (toks.length < 3) {
-            break;
+            continue;
           }
           ucsName = toks.shift();
           ucs = toks.shift();
-          // console.log("ucs = " + ucs);
           if (ucs[0] == "&") {
             ucs = this.charName2crc(ucs);
             ucs = String.fromCharCode( ( ( ucs - 0x10000 ) >> 10 ) | 0xD800, ( ( ucs - 0x10000 ) & 0x3FF) | 0xDC00 );
@@ -632,44 +669,6 @@
         }
       }
 
-      function sortFoundCharsByTotalStrokes(foundChars) {
-        if (!DB_Unihan.isLoaded) {
-          return;
-        }
-        if (foundChars == null) {
-          return;
-        }
-        var foundCharsSorted = foundChars.sort(function(a, b) {
-          var tsa = DB_Unihan.kTotalStrokes[a];
-          var tsb = DB_Unihan.kTotalStrokes[b];
-          if (tsa != undefined && tsb != undefined) {
-            return (tsa - tsb);
-          } else if (tsa == undefined && tsb == undefined) {
-            return (a - b);
-          } else if (tsa != undefined) {
-            return -1;
-          } else {
-            return 1;
-          }
-        });
-        return foundCharsSorted;
-      }
-
-      function sortFoundCharsByUCS(foundChars) {
-        if (foundChars == null) {
-          return;
-        }
-        var foundCharsUCS = new Array();
-        for ( var i = foundChars.length; i > 0; ) {
-          i -= 1;
-          foundCharsUCS[foundChars[i]] = DB_IDS.ucsArrToUcs4Codepoint(foundChars[i]);
-        }
-        var foundCharsSorted = foundChars.sort(function(a, b) {
-          return (foundCharsUCS[a] - foundCharsUCS[b]);
-        });
-        return foundCharsSorted;
-      }
-
       function showFoundCharsPartial() {
         var arrToShow = currentUi.foundChars.slice(maxPngRows * maxPngColumns * curPage, maxPngRows * maxPngColumns * (curPage + 1));
         showFoundResult(arrToShow);
@@ -733,9 +732,9 @@
         elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
         curPage = 0;
         if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
-          currentUi.foundChars = sortFoundCharsByTotalStrokes(res.foundChars);
+          currentUi.foundChars = DB_Unihan.sortCharsByTotalStrokes(res.foundChars);
         } else {
-          currentUi.foundChars = sortFoundCharsByUCS(res.foundChars);
+          currentUi.foundChars = DB_Unihan.sortCharsByUCS(res.foundChars);
         }
         showFoundChars();
       }
@@ -774,12 +773,12 @@
         if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
           sortTotalStroke = true;
           if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
-            currentUi.foundChars = sortFoundCharsByTotalStrokes(currentUi.foundChars);
+            currentUi.foundChars = DB_Unihan.sortCharsByTotalStrokes(currentUi.foundChars);
           }
         } else {
           sortTotalStroke = false;
           if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
-            currentUi.foundChars = sortFoundCharsByUCS(currentUi.foundChars);
+            currentUi.foundChars = DB_Unihan.sortCharsByUCS(currentUi.foundChars);
           }
         }
         if (usePng && currentUi.foundChars != null && currentUi.foundChars.length > (maxPngRows * maxPngColumns)) {
