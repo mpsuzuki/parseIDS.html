@@ -143,7 +143,64 @@
         return charsSorted;
       }
 
+      // -------------------------------------------------------
+      var DB_CJKSR = {};
+      DB_CJKSR.isLoaded = false;
+      DB_CJKSR.ucs2srcInfo = {};
+      DB_CJKSR.initByIsoTxt = function(isoCjkSrcTxt) {
+        var lines = isoCjkSrcTxt.split("\n");
+        var numLines = lines.length;
+        while (lines.length > 0) {
+          var toks = lines.shift().split(";");
+          if (toks.length < 11) {
+            continue;
+          }
 
+          var u = parseInt(toks.shift().replace(/^U\+/, ""), 16);
+          if (u < 0x10000) {
+            u = String.fromCharCode(u);
+          } else
+          if (u < 0xF0000) {
+            u = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
+          }
+
+          this.ucs2srcInfo[u] = {};
+          toks.shift(); // discard RS info
+          this.ucs2srcInfo[u]["G"]  = toks.shift();
+          this.ucs2srcInfo[u]["T"]  = toks.shift();
+          this.ucs2srcInfo[u]["J"]  = toks.shift();
+          this.ucs2srcInfo[u]["K"]  = toks.shift();
+          this.ucs2srcInfo[u]["V"]  = toks.shift();
+          this.ucs2srcInfo[u]["H"]  = toks.shift();
+          this.ucs2srcInfo[u]["KP"] = toks.shift();
+          this.ucs2srcInfo[u]["U"]  = toks.shift();
+          this.ucs2srcInfo[u]["M"]  = toks.shift();
+        }
+        this.isLoaded = true;
+        return numLines;
+      }
+      DB_CJKSR.checkSrcCoverage = function(ustr, coverage) {
+        if (!coverage || !coverage.length) {
+          return true;
+        }
+
+        for (var i = 0; i < coverage.length; i += 1) {
+          if (this.ucs2srcInfo[ustr] && this.ucs2srcInfo[ustr][coverage[i]].length) {
+            return true;
+          }
+        }
+
+        return false;
+      }
+      DB_CJKSR.applyFilterToChars = function(chars, coverage) {
+        var results = [];
+        for (var i = 0; i < chars.length; i += 1) {
+          if (this.checkSrcCoverage(chars[i], coverage)) {
+            results.push(chars[i]);
+          }
+        }
+        return results;
+      };
 
       // -------------------------------------------------------
 
@@ -537,30 +594,10 @@
       }
 
       function parseCJKUSR() {
-        var lines = CJKU_SR.split("\n");
-        for (var i in lines) {
-          var toks = lines[i].split(";");
-          if (toks.length == 11) {
-            var u = parseInt(toks[0], 16);
-            if (u < 0x10000) {
-              var ustr = String.fromCharCode(u);
-            } else if (u < 0xEFFFF) {
-              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
-            }
-
-            CJKU_SR_DB[ustr] = new Array();
-            if (toks[2]  != "") { CJKU_SR_DB[ustr]["G"]  = toks[2]; }
-            if (toks[3]  != "") { CJKU_SR_DB[ustr]["T"]  = toks[3]; }
-            if (toks[4]  != "") { CJKU_SR_DB[ustr]["J"]  = toks[4]; }
-            if (toks[5]  != "") { CJKU_SR_DB[ustr]["K"]  = toks[5]; }
-            if (toks[6]  != "") { CJKU_SR_DB[ustr]["V"]  = toks[6]; }
-            if (toks[7]  != "") { CJKU_SR_DB[ustr]["H"]  = toks[7]; }
-            if (toks[8]  != "") { CJKU_SR_DB[ustr]["KP"] = toks[8]; }
-            if (toks[9]  != "") { CJKU_SR_DB[ustr]["U"]  = toks[9]; }
-            if (toks[10] != "") { CJKU_SR_DB[ustr]["M"]  = toks[10]; }
-          }
-        }
-        elmStatusMsg.innerHTML = lines.length.toString(10) + " items parsed";
+        document.getElementById("ButtonToParseCJKUSR").disabled = true;
+        var numCjkSrcTxt = DB_CJKSR.initByIsoTxt(CJKU_SR);
+        elmStatusMsg.innerHTML = numCjkSrcTxt.toString(10) + " items parsed";
+        document.getElementById("ButtonToParseCJKUSR").disabled = false;
       }
 
       function fillTableWithPng(elmTable, inArr) {
@@ -717,6 +754,19 @@
         }
       }
 
+      function getSrcFilter() {
+        var srcFilter = [];
+        if (document.getElementById("ChkboxForSrcG").checked) { srcFilter.push("G"); };
+        if (document.getElementById("ChkboxForSrcT").checked) { srcFilter.push("T"); };
+        if (document.getElementById("ChkboxForSrcJ").checked) { srcFilter.push("J"); };
+        if (document.getElementById("ChkboxForSrcK").checked) { srcFilter.push("K"); };
+        if (document.getElementById("ChkboxForSrcV").checked) { srcFilter.push("V"); };
+        if (document.getElementById("ChkboxForSrcH").checked) { srcFilter.push("H"); };
+        if (document.getElementById("ChkboxForSrcU").checked) { srcFilter.push("U"); };
+        if (document.getElementById("ChkboxForSrcM").checked) { srcFilter.push("M"); };
+        return srcFilter;
+      }
+
       function lookupComponents() {
         var res = DB_IDS.lookupByString(document.CheckComponent.Components.value);
 
@@ -729,6 +779,11 @@
         if (res.ignoredChars.length > 0) {
           elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
         }
+
+        if (DB_CJKSR.isLoaded) {
+          res.foundChars = DB_CJKSR.applyFilterToChars(res.foundChars, getSrcFilter());
+        }
+
         elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
         curPage = 0;
         if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
