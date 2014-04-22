@@ -67,10 +67,15 @@
       var sortTotalStroke = false;
 
       // -------------------------------------------------------
+      var DB_IDS = {};
+      DB_IDS.Unihan = {};
+      DB_IDS.Unihan.parent = DB_IDS;
+      DB_IDS.CJKSR = {};
+      DB_IDS.CJKSR.parent = DB_IDS;
 
-      var DB_Unihan = {};
-      DB_Unihan.isLoaded = false;
-      DB_Unihan.initByTSV = function(unihanText) {
+      // -------------------------------------------------------
+      DB_IDS.Unihan.isLoaded = false;
+      DB_IDS.Unihan.initByTSV = function(unihanText) {
         var i, j, l, toks, u, ustr, prop, val;
         var unihanItems = unihanText.split("\n");
         j = 0;
@@ -106,16 +111,16 @@
         this.isLoaded = true;
         return unihanItems.length;
       };
-      DB_Unihan.sortCharsByTotalStrokes = function(chars) {
-        if (!DB_Unihan.isLoaded) {
+      DB_IDS.Unihan.sortCharsByTotalStrokes = function(chars) {
+        if (!DB_IDS.Unihan.isLoaded) {
           return chars;
         }
         if (chars == null) {
           return chars;
         }
         var results = chars.sort(function(a, b) {
-          var tsa = DB_Unihan.kTotalStrokes[a];
-          var tsb = DB_Unihan.kTotalStrokes[b];
+          var tsa = DB_IDS.Unihan.kTotalStrokes[a];
+          var tsb = DB_IDS.Unihan.kTotalStrokes[b];
           if (tsa != undefined && tsb != undefined) {
             return (tsa - tsb);
           } else if (tsa == undefined && tsb == undefined) {
@@ -128,7 +133,7 @@
         });
         return results;
       };
-      DB_Unihan.sortCharsByUCS = function(chars) {
+      DB_IDS.Unihan.sortCharsByUCS = function(chars) {
         if (chars == null) {
           return chars;
         }
@@ -144,10 +149,9 @@
       }
 
       // -------------------------------------------------------
-      var DB_CJKSR = {};
-      DB_CJKSR.isLoaded = false;
-      DB_CJKSR.ucs2srcInfo = {};
-      DB_CJKSR.initByIsoTxt = function(isoCjkSrcTxt) {
+      DB_IDS.CJKSR.isLoaded = false;
+      DB_IDS.CJKSR.ucs2srcInfo = {};
+      DB_IDS.CJKSR.initByIsoTxt = function(isoCjkSrcTxt) {
         var lines = isoCjkSrcTxt.split("\n");
         var numLines = lines.length;
         while (lines.length > 0) {
@@ -179,7 +183,7 @@
         this.isLoaded = true;
         return numLines;
       }
-      DB_CJKSR.checkSrcCoverage = function(ustr, coverage) {
+      DB_IDS.CJKSR.checkSrcCoverage = function(ustr, coverage) {
         if (!coverage || !coverage.length) {
           return true;
         }
@@ -192,7 +196,7 @@
 
         return false;
       }
-      DB_CJKSR.applyFilterToChars = function(chars, coverage) {
+      DB_IDS.CJKSR.applyFilterToChars = function(chars, coverage) {
         var results = [];
         for (var i = 0; i < chars.length; i += 1) {
           if (this.checkSrcCoverage(chars[i], coverage)) {
@@ -204,7 +208,6 @@
 
       // -------------------------------------------------------
 
-      var DB_IDS = {};
       DB_IDS.crc16ascii = function(s) {
         var crc = 0xFFFF;
         var j, i;
@@ -454,12 +457,12 @@
           if (0xFFFFF < ucsInt && ucsInt < 0x110000) {
             ucsStr = this.crc2charName[ucsInt - 0x100000];
           }
-          if ( !DB_Unihan.isLoaded ) {
+          if ( !DB_IDS.Unihan.isLoaded ) {
             outArr.push( inArr[i] + "(" + ucsStr + ")" );
-          } else if ( DB_Unihan.kTotalStrokes == undefined || inArr[i] == undefined || DB_Unihan.kTotalStrokes[inArr[i]] == undefined ) {
+          } else if ( DB_IDS.Unihan.kTotalStrokes == undefined || inArr[i] == undefined || DB_IDS.Unihan.kTotalStrokes[inArr[i]] == undefined ) {
             outArr.push( inArr[i] + "(" + ucsStr + ":XXX)" );
           } else {
-            outArr.push( inArr[i] + "(" + ucsStr + ":" + DB_Unihan.kTotalStrokes[inArr[i]].toString(10) + ")" );
+            outArr.push( inArr[i] + "(" + ucsStr + ":" + DB_IDS.Unihan.kTotalStrokes[inArr[i]].toString(10) + ")" );
           }
         }
         return outArr;
@@ -467,46 +470,12 @@
 
       // -------------------------------------------------------
       var brokenFileApi = false;
-      var idsText = new String();
-      var unihanText = new String();
-      var CJKU_SR = new String();
-      var CJKU_SR_DB = new Array();
-
-      function setGlobalText(destName, str) {
-        switch (destName) {
-        case "idsText":
-          idsText = str;
-          break;
-        case "unihanText":
-          unihanText = str;
-          break;
-        case "CJKU_SR":
-          CJKU_SR = str;
-          break;
-        default:
-          break;
-        }
-      }
-
-      function getGlobalText(destName) {
-        switch (destName) {
-        case "idsText":
-          return idsText;
-        case "unihanText":
-          return unihanText;
-        case "CJKU_SR":
-          return CJKU_SR;
-        default:
-          return null;
-        }
-      }
-      // -------------------------------------------------------
-
-      var currentUi = {};
-      currentUi.foundChars = [];
 
       // -------------------------------------------------------
-      function loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn) {
+
+      window.currentUi = {};
+      window.currentUi.foundChars = [];
+      window.currentUi.loadFileByXHR = function(filePath, destName, msgElm, curBtn, nxtBtn) {
         var err;
         var req;
         curBtn.disabled = true;
@@ -524,22 +493,20 @@
             msgElm.innerHTML = "Error in reading " + filePath + " by " + err.message;
           } else {
             nxtBtn.disabled = false;
-            setGlobalText(destName, req.responseText);
-            msgElm.innerHTML = destObj.length.toString(10) + " bytes loaded";
+            window.currentUi[destName] = req.responseText;
+            msgElm.innerHTML = req.responseText.length.toString(10) + " bytes loaded";
           }
         }
         curBtn.disabled = false;
         return err.code;
       }
-
-      function loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn) {
+      window.currentUi.loadFileByFileAPI = function(filePath, destName, msgElm, curBtn, nxtBtn) {
         var fileReader = new FileReader();
         var fileIsLoaded = false;
         curBtn.disabled = true;
         fileReader.onload = function(event) {
-          var loadedText = event.target.result;
-          setGlobalText(destName, loadedText);
-          msgElm.innerHTML = loadedText.length.toString(10) + " bytes loaded";
+          window.currentUi[destName] = event.target.result;
+          msgElm.innerHTML = event.target.result.length.toString(10) + " bytes loaded";
           curBtn.disabled = false;
           nxtBtn.disabled = false;
           fileIsLoaded = true;
@@ -548,54 +515,50 @@
         if (fileReader.readyState == 2 && !fileIsLoaded) {
           brokenFileApi = true;
           msgElm.innerHTML = "Error in reading " + filePath + " by File API, retry with XHR";
-          loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
+          window.currentUi.loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
       }
-
-      function loadFile(filePath, destName, msgElm, curBtn, nxtBtn) {
+      window.currentUi.loadFile = function(filePath, destName, msgElm, curBtn, nxtBtn) {
         curBtn.disabled = true;
         if (window.File && window.FileReader && !brokenFileApi) {
-          loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn);
+          window.currentUi.loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn);
         } else {
-          loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
+          window.currentUi.loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
         if (showDebug) {
-          msgElm.innerHTML = "<pre>" + getGlobalText(destName) + "</pre>";
+          msgElm.innerHTML = "<pre>" + window.currentUi[destName] + "</pre>";
         }
       }
-
-      function loadIdsFile() {
-        loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
+      window.currentUi.loadIdsFile = function() {
+        window.currentUi.loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
+      }
+      window.currentUi.loadUnihanFile = function() {
+        window.currentUi.loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmStatusMsg, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
       }
 
-      function loadUnihanFile() {
-        loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmStatusMsg, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
+      window.currentUi.loadCJKUSRFile = function() {
+        window.currentUi.loadFile(document.CJKUSRFile.PathToCJKUSR.files[0], "isoCjkSrcText", elmStatusMsg, document.getElementById("ButtonToLoadCJKUSR"), document.getElementById("ButtonToParseCJKUSR"));
       }
 
-      function loadCJKUSRFile() {
-        loadFile(document.CJKUSRFile.PathToCJKUSR.files[0], "CJKU_SR", elmStatusMsg, document.getElementById("ButtonToLoadCJKUSR"), document.getElementById("ButtonToParseCJKUSR"));
-      }
-
-      function parseIdsText() {
+      window.currentUi.parseIdsText = function() {
         document.getElementById("ButtonToParseIds").disabled = true;
-        numIdsItems = DB_IDS.initUcs2IdsDBByTSV(idsText);
+        numIdsItems = DB_IDS.initUcs2IdsDBByTSV(window.currentUi.idsText);
         elmStatusMsg.innerHTML = numIdsItems.toString(10) + " items parsed";
         document.getElementById("ButtonToParseIds").disabled = false;
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
-
-      function parseUnihanText() {
+      window.currentUi.parseUnihanText = function() {
         document.getElementById("ButtonToParseUnihan").disabled = true;
-        var numUnihanItems = DB_Unihan.initByTSV(unihanText);
+        var numUnihanItems = DB_IDS.Unihan.initByTSV(window.currentUi.unihanText);
         delete unihanText;
         elmStatusMsg.innerHTML =  numUnihanItems + " items parsed";
         document.getElementById("ButtonToParseUnihan").disabled = false;
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
 
-      function parseCJKUSR() {
+      window.currentUi.parseCJKUSR = function() {
         document.getElementById("ButtonToParseCJKUSR").disabled = true;
-        var numCjkSrcTxt = DB_CJKSR.initByIsoTxt(CJKU_SR);
+        var numCjkSrcTxt = DB_IDS.CJKSR.initByIsoTxt(window.currentUi.isoCjkSrcText);
         elmStatusMsg.innerHTML = numCjkSrcTxt.toString(10) + " items parsed";
         document.getElementById("ButtonToParseCJKUSR").disabled = false;
       }
@@ -780,16 +743,16 @@
           elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
         }
 
-        if (DB_CJKSR.isLoaded) {
-          res.foundChars = DB_CJKSR.applyFilterToChars(res.foundChars, getSrcFilter());
+        if (DB_IDS.CJKSR.isLoaded) {
+          res.foundChars = DB_IDS.CJKSR.applyFilterToChars(res.foundChars, getSrcFilter());
         }
 
         elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
         curPage = 0;
         if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
-          currentUi.foundChars = DB_Unihan.sortCharsByTotalStrokes(res.foundChars);
+          currentUi.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(res.foundChars);
         } else {
-          currentUi.foundChars = DB_Unihan.sortCharsByUCS(res.foundChars);
+          currentUi.foundChars = DB_IDS.Unihan.sortCharsByUCS(res.foundChars);
         }
         showFoundChars();
       }
@@ -828,12 +791,12 @@
         if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
           sortTotalStroke = true;
           if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
-            currentUi.foundChars = DB_Unihan.sortCharsByTotalStrokes(currentUi.foundChars);
+            currentUi.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(currentUi.foundChars);
           }
         } else {
           sortTotalStroke = false;
           if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
-            currentUi.foundChars = DB_Unihan.sortCharsByUCS(currentUi.foundChars);
+            currentUi.foundChars = DB_IDS.Unihan.sortCharsByUCS(currentUi.foundChars);
           }
         }
         if (usePng && currentUi.foundChars != null && currentUi.foundChars.length > (maxPngRows * maxPngColumns)) {
@@ -1016,19 +979,19 @@
         </div>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="PathToIds">
-          <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="loadIdsFile()">
-          <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
+          <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="window.currentUi.loadIdsFile()">
+          <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="window.currentUi.parseIdsText()" disabled>
         </form>
         <form name="UnihanFile" onsubmit="return false;">
           <input type="file" name="PathToUnihan">
-          <input type="button" id="ButtonToLoadUnihan"  value="load Unihan.txt"  onclick="loadUnihanFile()">
-          <input type="button" id="ButtonToParseUnihan" value="parse Unihan.txt" onclick="parseUnihanText()" disabled>
+          <input type="button" id="ButtonToLoadUnihan"  value="load Unihan.txt"  onclick="window.currentUi.loadUnihanFile()">
+          <input type="button" id="ButtonToParseUnihan" value="parse Unihan.txt" onclick="window.currentUi.parseUnihanText()" disabled>
           <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
         </form>
         <form name="CJKUSRFile" onsubmit="return false;">
           <input type="file" name="PathToCJKUSR">
-          <input type="button" id="ButtonToLoadCJKUSR"  value="load CJKU_SR"  onclick="loadCJKUSRFile()">
-          <input type="button" id="ButtonToParseCJKUSR" value="parse CJKU_SR" onclick="parseCJKUSR()" disabled>
+          <input type="button" id="ButtonToLoadCJKUSR"  value="load CJKU_SR"  onclick="window.currentUi.loadCJKUSRFile()">
+          <input type="button" id="ButtonToParseCJKUSR" value="parse CJKU_SR" onclick="window.currentUi.parseCJKUSR()" disabled>
           <input type="checkbox" id="ChkboxForSrcG" checked>G
           <input type="checkbox" id="ChkboxForSrcT" checked>T
           <input type="checkbox" id="ChkboxForSrcJ" checked>J
