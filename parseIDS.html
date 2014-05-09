@@ -25,9 +25,6 @@
       margin-left: 1%;
       float: left;
     }
-    #OptionForms {
-      display: none;
-    }
     #FoundIdsNavigatorHeader {
       display: none;
     }
@@ -50,13 +47,11 @@
       // -- constant DOM element
       var elmSideBar = null;
       var elmAtomicIds = null;
-      var elmOptionForms = null;
       var elmStatusMsg = null;
       var elmFoundIdsBody = null;
       var elmFoundIdsTable = null;
 
       // -- global variables
-      var showDebug = false;
       var showOptions = false;
       var usePng = false;
       var maxPngRows = 10;
@@ -309,9 +304,6 @@
         }
         return arr;
       }
-      String.prototype.toUcsArray = function(db_ids) {
-        return db_ids.utf16StrToUcsArray(this);
-      }
       DB_IDS.ucsArrToUcs4Codepoint = function(ustr) {
         // single BMP character
         if (ustr.length == 1) {
@@ -336,7 +328,7 @@
       DB_IDS.IdsItem.prototype.setIdss = function(idss) {
         this.idss = idss;
         for (i in this.idss) {
-          this.idsArrays[i] = this.idss[i].toUcsArray(DB_IDS);
+          this.idsArrays[i] = DB_IDS.utf16StrToUcsArray(this.idss[i]);
         }
         return this;
       }
@@ -437,7 +429,7 @@
         return res;
       }
       DB_IDS.decomposeUtf16Str = function(ustr) {
-        var ucs4arr = ustr.toUcsArray(this);
+        var ucs4arr = DB_IDS.utf16StrToUcsArray(ustr);
         var result = new Array();
         while (ucs4arr.length > 0) {
           var u = ucs4arr.shift();
@@ -473,9 +465,257 @@
 
       // -------------------------------------------------------
 
-      window.currentUi = {};
-      window.currentUi.foundChars = [];
-      window.currentUi.loadFileByXHR = function(filePath, destName, msgElm, curBtn, nxtBtn) {
+      var CurrentUi = function() {
+        this.usePng = false;
+        this.foundChars = [];
+        this.ctrls = {};
+        return this;
+      };
+      CurrentUi.prototype.expandArrayToSelector = function(elmSelector, arr, defaultValue) {
+        for (var i = 0; i < arr.length; i += 1) {
+          var o = document.createElement("OPTION");
+          o.setAttribute("value", arr[i]);
+          elmSelector.appendChild(o);
+          o.appendChild(document.createTextNode(o.value));
+          if (defaultValue == arr[i]) {
+            elmSelector.selectedIndex = i;
+          }
+        }
+      };
+      CurrentUi.prototype.addGlyphTable = function(elmParent, noNavigator) {
+
+        // ----- table of cropped PNG table with page navigator -----
+        var GlyphTable = function() {
+          // navigator before/after glyph table
+          var Navigator = function(glyphTable) {
+            this.glyphTable = glyphTable;
+            this.curPage = 0;
+            return this;
+          };
+          Navigator.prototype.movePageByDelta = function(delta) {
+            var i = this.curPage + delta;
+            try {
+              this.elmHeader.selector.childNodes[i].selected = true;
+              this.elmFooter.selector.childNodes[i].selected = true;
+            }
+            catch (err) {
+              // no need if we don't care inconsistent current page case
+              // this.elmHeader.childNodes[curPage].selected = true;
+              // this.elmFooter.childNodes[curPage].selected = true;
+              return; // invalid page number (no prev or no next)
+            }
+            this.curPage = i;
+            this.glyphTable.showFoundCharsPartial();
+          };
+          Navigator.prototype.callbackToMoveNextPage = function() {
+            // this function is called as callback from button element
+            this.navigator.movePageByDelta(+1);
+          };
+          Navigator.prototype.callbackToMovePreviousPage = function() {
+            // this function is called as callback from button element
+            this.navigator.movePageByDelta(-1);
+          };
+          Navigator.prototype.callbackToMovePageBySelector = function() {
+            // this function is called as callback from selector element
+            this.navigator.curPage = parseInt(this.value, 10);
+            this.navigator.elmHeader.childNodes[curPage].selected = true;
+            this.navigator.elmFooter.childNodes[curPage].selected = true;
+            this.navigator.glyphTable.showFoundCharsPartial();
+          };
+          Navigator.prototype.addButtonsAndSelector = function(elmDiv) {
+            // add button/selector/button to header, and add event listeners
+            var pagePrev = document.createElement("INPUT");
+            pagePrev.setAttribute("type", "button");
+            pagePrev.setAttribute("value", "prev");
+            pagePrev.addEventListener("click", this.callbackToMovePreviousPage);
+            elmDiv.appendChild(pagePrev);
+
+            var pageSelector = document.createElement("SELECT");
+            pageSelector.addEventListener("change", this.callbacktoMovePageBySelector);
+            elmDiv.appendChild(pageSelector);
+
+            var pageNext = document.createElement("INPUT");
+            pageNext.setAttribute("type", "button");
+            pagePrev.setAttribute("value", "next");
+            pageNext.addEventListener("click", this.callbackToMoveNextPage);
+            elmDiv.appendChild(pageNext);
+          };
+          Navigator.prototype.addHeaderAndFooter = function(elmTable) {
+            this.elmHeader = document.createElement("DIV");
+            elmTable.parentElement.insertBefore(this.elmHeader, elmTable);
+            this.addButtonsAndSelector(this.elmHeader);
+
+            this.elmFooter = document.createElement("DIV");
+            elmTable.parentElement.insertBefore(this.elmFooter, elmTable);
+            this.addButtonsAndSelector(this.elmFooter);
+          }
+
+          this.addNavigator = function() {
+            this.navigator = new Navigator();
+            this.navigator.addHeaderAndFooter(this.elmTable);
+            return this.nagigator;
+          };
+
+          this.picDir = "PNG";
+          this.glyphs = [];
+
+          return this;
+        };
+        GlyphTable.prototype.expandTableMatrix = function() {
+          var c, r, rs, x, y;
+          if ( this.elmTable.rows.length < this.maxPngRows ) {
+            for ( y = this.elmTable.rows.length; y < rows; y += 1 ) {
+              this.elmTable.insertRow(-1);
+            }
+          }
+          rs = this.elmTable.rows;
+          if ( rs[rs.length - 1].cells.length < (2 * this.maxPngColumns) ) {
+            for ( y = 0; y < this.elmTable.rows.length; y += 1 ) {
+              r = this.elmTable.rows[y];
+              for ( x = r.cells.length; x < (2 * this.maxPngColumns); x += 1 ) {
+                r.insertCell(-1);
+                r.lastChild.appendChild(document.createTextNode(""));
+                r.insertCell(-1);
+                r.lastChild.appendChild(document.createElement("img"));
+              }
+            }
+          }
+        };
+        GlyphTable.prototype.updateTableMatrix = function() {
+          var c, r, x, y;
+          this.expandTableMatrix();
+
+          for ( y = 0; y < this.elmTable.rows.length; y += 1 ) {
+            r = this.elmTable.rows[y];
+            for ( x = 0; x < r.cells.length; x += 2 ) {
+              if (y < rows && x < (columns*2) ) {
+                r.cells[x].style.display = "";
+                r.cells[x+1].style.display = "";
+              } else {
+                r.cells[x].style.display = "none";
+                r.cells[x].lastChild.data = "";
+                r.cells[x+1].style.display = "none";
+                r.cells[x+1].lastChild.src = "";
+              }
+            }
+          }
+        };
+        GlyphTable.prototype.fillTableWithPng = function(inArr) {
+          var i, r, x, y;
+          var ctxt, txt, cimg, img;
+          var pngDir = this.picDir.value;
+          for ( y = 0; y < this.maxPngRows; y += 1 ) {
+            r = this.elmTable.rows[y];
+            for ( x = 0; x < this.maxPngColumns; x += 1 ) {
+              i = ( x * this.maxPngRows ) + y;
+              ctxt = r.cells[x*2];
+              cimg = r.cells[(x*2) + 1];
+              txt = ctxt.childNodes[0];
+              img = cimg.childNodes[0];
+              if ( i < inArr.length ) {
+                var ustr = inArr[i].split("(");
+                var uhex = DB_IDS.ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
+                var subDir = uhex.slice(0,-2);
+                var txt, img;
+
+                txt.data = inArr[i];
+
+                img.height = pngHeight;
+                img.align = "middle";
+                img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
+
+                ctxt.style.display = "";
+                cimg.style.display = "";
+
+                if ( x == 0 ) {
+                  ctxt.style.borderLeft = "1px solid black";
+                }
+                cimg.style.borderRight = "1px solid black";
+
+                if ( y == 0 ) {
+                  ctxt.style.borderTop = "1px solid black";
+                  cimg.style.borderTop = "1px solid black";
+                }
+                ctxt.style.borderBottom = "1px solid black";
+                cimg.style.borderBottom = "1px solid black";
+              } else {
+                ctxt.style.display = "none";
+                cimg.style.display = "none";
+              }
+            }
+          }
+        };
+        GlyphTable.prototype.callbackToUpdatePngHeight = function() {
+          this.parentGlyphTable.pngHeight = parseInt(this.value, 10);
+        };
+        GlyphTable.prototype.callbackToUpdatePngRow = function() {
+          this.parentGlyphTable.pngRow = parseInt(this.value, 10);
+          this.parentGlyphTable.updateTableMatrix();
+        };
+        GlyphTable.prototype.callbackToUpdatePngColumn = function() {
+          this.parentGlyphTable.pngColumn = parseInt(this.value, 10);
+          this.parentGlyphTable.updateTableMatrix();
+        };
+        GlyphTable.prototype.addControl = function(elmDiv) {
+          elmDiv.appendChild(document.createTextNode("|"));
+          elmDiv.appendChild(document.createTextNode("IMG Height"));
+          this.elmPngHeight = document.createElement("SELECT");
+          elmDiv.appendChild(this.elmPngHeight);
+          this.elmPngHeight.parentGlyphTable = this;
+          this.parentUi.expandArrayToSelector( this.elmPngHeight,
+                                             [20, 30, 40, 50, 60, 70],
+                                             50 );
+          this.elmPngHeight.addEventListener("change", this.callbackToUpdatePngHeight);
+
+          elmDiv.appendChild(document.createTextNode("|"));
+          elmDiv.appendChild(document.createTextNode("nRows"));
+          this.elmPngRow = document.createElement("SELECT");
+          this.elmPngRow.parentGlyphTable = this;
+          elmDiv.appendChild(this.elmPngRow);
+          this.parentUi.expandArrayToSelector( this.elmPngRow,
+                                             [5, 10, 20],
+                                             10 );
+          this.elmPngRow.addEventListener("change", this.callbackToUpdatePngRow);
+
+          elmDiv.appendChild(document.createTextNode("|"));
+          elmDiv.appendChild(document.createTextNode("nColumns"));
+          this.elmPngColumn = document.createElement("SELECT");
+          this.elmPngColumn.parentGlyphTable = this;
+          elmDiv.appendChild(this.elmPngColumn);
+          this.parentUi.expandArrayToSelector( this.elmPngColumn,
+                                             [1, 2, 3, 4, 5],
+                                             2 );
+          this.elmPngColumn.addEventListener("change", this.callbackToUpdatePngColumn);
+        };
+
+        this.glyphTable = new GlyphTable();
+        this.glyphTable.parentUi = this;
+        this.glyphTable.elmTable = document.createElement("TABLE");
+        elmParent.appendChild(this.glyphTable.elmTable);
+        this.glyphTable.elmTable.setAttribute("border", "0");
+        this.glyphTable.elmTable.setAttribute("cellspacing", "0");
+
+        if (!noNavigator) {
+          this.glyphTable.addNavigator();
+        }
+        return this.glyphTable;
+      };
+      CurrentUi.prototype.showFoundResults = function(arr) {
+        if (this.addHexCodeToUcs) {
+          arr = DB_IDS.addHexCodePointToUcsArray(arr);
+        }
+
+        if (this.usePng) {
+          this.elmTextFoundResults.style.display = "none";
+          this.glyphTable.fillTableWithPng(arr);
+          this.glyphTable.elmTable.style.display = "block";
+        } else {
+          this.glyphTable.elmTable.style.display = "none";
+          this.elmTextFoundResults.innerHTML = arr.join(", ");
+          this.elmTextFoundResultss.style.display = "block";
+        }
+      };
+      CurrentUi.prototype.loadFileByXHR = function(filePath, destName, msgElm, curBtn, nxtBtn) {
         var err;
         var req;
         curBtn.disabled = true;
@@ -500,7 +740,7 @@
         curBtn.disabled = false;
         return err.code;
       }
-      window.currentUi.loadFileByFileAPI = function(filePath, destName, msgElm, curBtn, nxtBtn) {
+      CurrentUi.prototype.loadFileByFileAPI = function(filePath, destName, msgElm, curBtn, nxtBtn) {
         var fileReader = new FileReader();
         var fileIsLoaded = false;
         curBtn.disabled = true;
@@ -518,36 +758,31 @@
           window.currentUi.loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
       }
-      window.currentUi.loadFile = function(filePath, destName, msgElm, curBtn, nxtBtn) {
+      CurrentUi.prototype.loadFile = function(filePath, destName, msgElm, curBtn, nxtBtn) {
         curBtn.disabled = true;
         if (window.File && window.FileReader && !brokenFileApi) {
           window.currentUi.loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn);
         } else {
           window.currentUi.loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
-        if (showDebug) {
-          msgElm.innerHTML = "<pre>" + window.currentUi[destName] + "</pre>";
-        }
       }
-      window.currentUi.loadIdsFile = function() {
+      CurrentUi.prototype.loadIdsFile = function() {
         window.currentUi.loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
       }
-      window.currentUi.loadUnihanFile = function() {
+      CurrentUi.prototype.loadUnihanFile = function() {
         window.currentUi.loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmStatusMsg, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
       }
-
-      window.currentUi.loadCJKUSRFile = function() {
+      CurrentUi.prototype.loadCJKUSRFile = function() {
         window.currentUi.loadFile(document.CJKUSRFile.PathToCJKUSR.files[0], "isoCjkSrcText", elmStatusMsg, document.getElementById("ButtonToLoadCJKUSR"), document.getElementById("ButtonToParseCJKUSR"));
       }
-
-      window.currentUi.parseIdsText = function() {
+      CurrentUi.prototype.parseIdsText = function() {
         document.getElementById("ButtonToParseIds").disabled = true;
         numIdsItems = DB_IDS.initUcs2IdsDBByTSV(window.currentUi.idsText);
         elmStatusMsg.innerHTML = numIdsItems.toString(10) + " items parsed";
         document.getElementById("ButtonToParseIds").disabled = false;
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
-      window.currentUi.parseUnihanText = function() {
+      CurrentUi.prototype.parseUnihanText = function() {
         document.getElementById("ButtonToParseUnihan").disabled = true;
         var numUnihanItems = DB_IDS.Unihan.initByTSV(window.currentUi.unihanText);
         delete unihanText;
@@ -555,169 +790,13 @@
         document.getElementById("ButtonToParseUnihan").disabled = false;
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
-
-      window.currentUi.parseCJKUSR = function() {
+      CurrentUi.prototype.parseCJKUSR = function() {
         document.getElementById("ButtonToParseCJKUSR").disabled = true;
         var numCjkSrcTxt = DB_IDS.CJKSR.initByIsoTxt(window.currentUi.isoCjkSrcText);
         elmStatusMsg.innerHTML = numCjkSrcTxt.toString(10) + " items parsed";
         document.getElementById("ButtonToParseCJKUSR").disabled = false;
       }
-
-      function fillTableWithPng(elmTable, inArr) {
-        // assume cells out of maxPngColumns x maxPngRows are already hidden
-        var i, r, x, y;
-        var ctxt, txt, cimg, img;
-        var pngDir = document.getElementById("PngDir").value;
-        for ( y = 0; y < maxPngRows; y += 1 ) {
-          r = elmTable.rows[y];
-          for ( x = 0; x < maxPngColumns; x += 1 ) {
-            i = ( x * maxPngRows ) + y;
-            ctxt = r.cells[x*2];
-            cimg = r.cells[(x*2) + 1];
-            txt = ctxt.childNodes[0];
-            img = cimg.childNodes[0];
-            if ( i < inArr.length ) {
-              var ustr = inArr[i].split("(");
-              var uhex = DB_IDS.ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
-              var subDir = uhex.slice(0,-2);
-              var txt, img;
-
-              txt.data = inArr[i];
-
-              img.height = pngHeight;
-              img.align = "middle";
-              img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
-
-              ctxt.style.display = "";
-              cimg.style.display = "";
-
-              if ( x == 0 ) {
-                ctxt.style.borderLeft = "1px solid black";
-              }
-              cimg.style.borderRight = "1px solid black";
-
-              if ( y == 0 ) {
-                ctxt.style.borderTop = "1px solid black";
-                cimg.style.borderTop = "1px solid black";
-              }
-              ctxt.style.borderBottom = "1px solid black";
-              cimg.style.borderBottom = "1px solid black";
-
-
-            } else {
-              ctxt.style.display = "none";
-              cimg.style.display = "none";
-            }
-          }
-        }
-      }
-
-      function showFoundResult(arr) {
-        if (document.getElementById("ChkboxForHexUcs").checked) {
-          arr = DB_IDS.addHexCodePointToUcsArray(arr);
-        }
-
-        if (usePng) {
-          elmFoundIdsBody.style.display = "none";
-          fillTableWithPng(elmFoundIdsTable, arr);
-          elmFoundIdsTable.style.display = "block";
-        } else {
-          elmFoundIdsTable.style.display = "none";
-          elmFoundIdsBody.innerHTML = arr.join(", ");
-          elmFoundIdsBody.style.display = "block";
-        }
-      }
-
-      function expandTableMatrix(elmTable, rows, columns) {
-        var c, r, rs, x, y;
-        if ( elmTable.rows.length < rows ) {
-          for ( y = elmTable.rows.length; y < rows; y += 1 ) {
-            elmTable.insertRow(-1);
-          }
-        }
-        rs = elmTable.rows;
-        if ( rs[rs.length - 1].cells.length < (columns*2) ) {
-          for ( y = 0; y < elmTable.rows.length; y += 1 ) {
-            r = elmTable.rows[y];
-            for ( x = r.cells.length; x < (columns*2); x += 1 ) {
-              r.insertCell(-1);
-              r.lastChild.appendChild(document.createTextNode(""));
-              r.insertCell(-1);
-              r.lastChild.appendChild(document.createElement("img"));
-            }
-          }
-        }
-      }
-
-      function updateTableMatrix(elmTable, rows, columns) {
-        var c, r, x, y;
-        expandTableMatrix(elmTable, rows, columns);
-
-        for ( y = 0; y < elmTable.rows.length; y += 1 ) {
-          r = elmTable.rows[y];
-          for ( x = 0; x < r.cells.length; x += 2 ) {
-            if (y < rows && x < (columns*2) ) {
-              r.cells[x].style.display = "";
-              r.cells[x+1].style.display = "";
-            } else {
-              r.cells[x].style.display = "none";
-              r.cells[x].lastChild.data = "";
-              r.cells[x+1].style.display = "none";
-              r.cells[x+1].lastChild.src = "";
-            }
-          }
-        }
-      }
-
-      function showFoundCharsPartial() {
-        var arrToShow = currentUi.foundChars.slice(maxPngRows * maxPngColumns * curPage, maxPngRows * maxPngColumns * (curPage + 1));
-        showFoundResult(arrToShow);
-      }
-
-      function rollPageNavigators(attr) {
-        document.getElementById("FoundIdsNavigatorHeader").style.display = attr;
-        document.getElementById("FoundIdsNavigatorFooter").style.display = attr;
-      }
-
-      function updateAPageSelector(pageSelector, maxPages) {
-        var curNodes = pageSelector.childNodes;
-        if ( curNodes.length > maxPages ) {
-          for ( var i = curNodes.length; i > maxPages; ) {
-            i -= 1;
-            pageSelector.removeChild(curNodes[i]);
-          }
-        } else if ( curNodes.length < maxPages ) {
-          for ( var i = curNodes.length; i < maxPages; i += 1 ) {
-            pageSelector.innerHTML += "<option value=\"" + i.toString(10) + "\">" + i.toString(10);
-          }
-        }
-      }
-
-      function updatePageSelectors(maxPages) {
-        updateAPageSelector(document.getElementById("PageSelectorHeader"), maxPages);
-        updateAPageSelector(document.getElementById("PageSelectorFooter"), maxPages);
-      }
-
-      function showFoundChars() {
-        var err;
-        if (!currentUi.foundChars.length) {
-          return;
-        }
-        var maxPngPerPage = maxPngRows * maxPngColumns;
-        var arrToShow;
-        var foundIdsHeader = document.getElementById("FoundIdsHeader");
-        if (usePng && currentUi.foundChars != null && currentUi.foundChars.length > maxPngPerPage) {
-          updatePageSelectors(Math.ceil(currentUi.foundChars.length / maxPngPerPage));
-          rollPageNavigators("block");
-          showFoundCharsPartial();
-        } else {
-          rollPageNavigators("none");
-          arrToShow = currentUi.foundChars.slice(0);
-          showFoundResult(arrToShow);
-        }
-      }
-
-      function getSrcFilter() {
+      CurrentUi.prototype.getSrcFilter = function() {
         var srcFilter = [];
         if (document.getElementById("ChkboxForSrcG").checked) { srcFilter.push("G"); };
         if (document.getElementById("ChkboxForSrcT").checked) { srcFilter.push("T"); };
@@ -729,41 +808,44 @@
         if (document.getElementById("ChkboxForSrcM").checked) { srcFilter.push("M"); };
         return srcFilter;
       }
-
-      function lookupComponents() {
-        var res = DB_IDS.lookupByString(document.CheckComponent.Components.value);
+      CurrentUi.prototype.lookupComponents = function(queryStr) {
+        var res = DB_IDS.lookupByString(queryStr);
 
         if (res.ignoredChars.length == res.components.length) {
-          elmStatusMsg.innerHTML = "no searcheable characters are found in the query \"" + document.CheckComponent.Components.value+ "\"<br>";
+          this.elmStatusMsg.innerHTML = "no searcheable characters are found in the query \"" + queryStr "\"<br>";
           return;
         }
 
-        elmStatusMsg.innerHTML = "";
+        this.elmStatusMsg.innerHTML = "";
         if (res.ignoredChars.length > 0) {
-          elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
+          this.elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
         }
 
         if (DB_IDS.CJKSR.isLoaded) {
           res.foundChars = DB_IDS.CJKSR.applyFilterToChars(res.foundChars, getSrcFilter());
         }
 
-        elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
-        curPage = 0;
-        if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
-          currentUi.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(res.foundChars);
-        } else {
-          currentUi.foundChars = DB_IDS.Unihan.sortCharsByUCS(res.foundChars);
+        this.elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
+        if (this.glyphTable && this.glyphTable.navigator) {
+          this.glyphTable.navigator.curPage = 0;
         }
-        showFoundChars();
+        if (this.sortTotalStroke) {
+          this.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(res.foundChars);
+        } else {
+          this.foundChars = DB_IDS.Unihan.sortCharsByUCS(res.foundChars);
+        }
+        this.showFoundResults(this.foundChars);
       }
-
-      function decomposeSelectedComponents(wholeString, selectionStart, selectionEnd) {
+      CurrentUi.prototype.callbackToLookupComponents = function() {
+        // this function is called as callback
+        this.parentUi.lookupComponents(this.value);
+      }
+      CurrentUi.prototype.decomposeSelectedComponents = function(wholeString, selectionStart, selectionEnd) {
         var curHead = wholeString.substring(0,selectionStart);
         var curTail = wholeString.substring(selectionEnd,wholeString.length);
         return curHead + DB_IDS.decomposeUtf16Str(wholeString.substring(selectionStart, selectionEnd - selectionStart + 1)).join("") + curTail; 
       }
-
-      function wrapDecomposeSelectedComponents(formElement) {
+      CurrentUi.prototype.wrapDecomposeSelectedComponents = function(formElement) {
         formElement.focus();
 
         if (formElement.setSelectionRange) {
@@ -787,86 +869,132 @@
         }
       }
 
-      function updateSort() {
-        if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
-          sortTotalStroke = true;
-          if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
-            currentUi.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(currentUi.foundChars);
+      // ----- utility to add INPUT elements
+      CurrentUi.prototype.addElmCheckBoxAndLabel = function(elmDiv, labelText) {
+        var elmCheckBox = document.createElement("INPUT");
+        elmCheckBox.setAttribute("type", "checkbox");
+        var elmLabel = document.createTextNode(labelText);
+        elmDiv.appendChild(elmCheckBox);
+        elmDiv.appendChild(elmLabel);
+        return [elmCheckBox, elmLabel];
+      }
+
+      // ----- sort by UCS codepoint or Total Strokes ------
+      CurrentUi.prototype.callbackToUpdateSort = function() {
+        // this function is called as callback from checkbox element
+        var curUi = this.parentUi;
+        if (this.checked) {
+          curUi.sortTotalStroke = true;
+          if (curUi.foundChars != null && curUi.foundChars.length > 0) {
+            curUi.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(curUi.foundChars);
           }
         } else {
-          sortTotalStroke = false;
-          if (currentUi.foundChars != null && currentUi.foundChars.length > 0) {
-            currentUi.foundChars = DB_IDS.Unihan.sortCharsByUCS(currentUi.foundChars);
+          curUi.sortTotalStroke = false;
+          if (curUi.foundChars != null && curUi.foundChars.length > 0) {
+            curUi.foundChars = DB_IDS.Unihan.sortCharsByUCS(curUi.foundChars);
           }
         }
-        if (usePng && currentUi.foundChars != null && currentUi.foundChars.length > (maxPngRows * maxPngColumns)) {
-          rollPageNavigators("block");
-          showFoundCharsPartial();
+        if (curUi.usePng && curUi.foundChars != null && curUi.foundChars.length > (curUi.maxPngRows * curUi.maxPngColumns)) {
+          curUi.rollPageNavigators("block");
+          curUi.showFoundCharsPartial();
         } else {
-          rollPageNavigators("none");
-          showFoundResult(currentUi.foundChars.slice(0));
+          curUi.rollPageNavigators("none");
+          curUi.showFoundResult(curUi.foundChars.slice(0));
         }
-      }
+      };
+      CurrentUi.prototype.addControlToSort = function(elmDiv, labelText) {
+        if (!labelText) {
+          labelText = "sort by total stroke";
+        }
+        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
+        this.ctrls.sort = {};
+        this.ctrls.sort.checkBox = cbal[0];
+        this.ctrls.sort.checkBox.parentUi = this;
+        this.ctrls.sort.label = cbal[1];
 
-      function updateDebug(obj) {
-        showDebug = obj.checked;
-      }
-
-      function rollOptionForms(obj) {
-        if (obj.checked) {
-          elmOptionForms.style.display = "block";
+        this.ctrls.sort.checkBox.addEventListener("change", this.callbackToUpdateSort);
+        return true;
+      };
+      CurrentUi.prototype.callbackToRollOptionControls = function() {
+        // this function is called as callback from checkbox element
+        if (this.checked) {
+          this.parentUi.elmOptionControls.style.display = "block";
         } else {
-          elmOptionForms.style.display = "none";
+          this.parentUi.elmOptionControls.style.display = "none";
         }
       }
+      CurrentUi.prototype.addControlToRollOptions = function(elmDiv, labelText) {
+        if (!labelText) {
+          labelText = "show options";
+        }
+        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
+        this.ctrls.options = {};
+        this.ctrls.options.checkBox = cbal[0];
+        this.ctrls.options.checkBox.parentUi = this;
+        this.ctrls.options.label = cbal[1];
 
-      function rollSideBar(obj) {
-        if (obj.checked) {
-          elmSideBar.style.width = sideBarWidthPercent.toString(10) + "%";
-          elmSideBar.style.display = "block";
+        this.ctrls.options.checkBox.addEventListener("change", this.callbackToRollOptionControls);
+        return true;
+      }
+      CurrentUi.prototype.callbackToRollSideBar = function() {
+        // this function is called as callback from checkbox element
+        var sideBar = this.parentUi.sideBar;
+        if (this.checked) {
+          sideBar.style.width = sideBarWidthPercent.toString(10) + "%";
+          sideBar.style.display = "block";
         } else {
-          elmSideBar.style.width = "0%";
-          elmSideBar.style.display = "none";
+          sideBar.style.width = "0%";
+          sideBar.style.display = "none";
         }
       }
+      CurrentUi.prototype.addControlToRollSideBar = function(elmDiv, labelText) {
+        if (!labelText) {
+          labelText = "show SideBar";
+        }
+        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
+        this.ctrls.sideBar = {};
+        this.ctrls.sideBar.checkBox = cbal[0];
+        this.ctrls.sideBar.checkBox.parentUi = this;
+        this.ctrls.sideBar.label = cbal[1];
 
-      function movePageByDelta(delta) {
-        var i = curPage + delta;
-        var psH = document.getElementById("PageSelectorHeader");
-        var psF = document.getElementById("PageSelectorFooter");
-        try {
-          psH.childNodes[i].selected = true;
-          psF.childNodes[i].selected = true;
-        }
-        catch (err) {
-          // no need if we don't care inconsistent current page case
-          // psH.childNodes[curPage].selected = true;
-          // psF.childNodes[curPage].selected = true;
-          return; // invalid page number (no prev or no next)
-        }
-        curPage = i;
-        showFoundCharsPartial();
+        this.ctrls.sideBar.checkBox.addEventListener("change", this.callbackToRollSideBar);
+        return true;
       }
 
-      function movePageBySelector() {
-        curPage = parseInt(this.value, 10);
-        var psH = document.getElementById("PageSelectorHeader");
-        var psF = document.getElementById("PageSelectorFooter");
-        psH.childNodes[curPage].selected = true;
-        psF.childNodes[curPage].selected = true;
-        showFoundCharsPartial();
-      }
-
-      function updateFontSize() {
+      // ----- font size -----
+      CurrentUi.prototype.callbackToUpdateFontSize = function() {
+        // this function is called as callback from selector element
         var fontSize = parseInt(this.value, 10);
-        elmAtomicIds.style.fontSize = fontSize;
-        elmFoundIdsBody.style.fontSize = fontSize;
-        elmFoundIdsTable.style.fontSize = fontSize;
+        for (var i = 0; i < this.elmsToUpdate; i += 1) {
+          if (this.elmsToUpdate[i] && this.elmsToUpdate[i].style) {
+            this.elmsToUpdate[i].style.fontSize = fontSize;
+          }
+        }
       }
+      CurrentUi.prototype.addControlToUpdateFontSize = function(elmDiv, labelText, elmsToUpdate) {
+        this.ctrls.fontSize = {};
+        this.ctrls.fontSize.label = document.createTextNode(labelText);
+        elmDiv.appendChild(this.ctrls.fontSize.label);
+        this.ctrls.fontSize.selector = document.createElement("SELECT");
+        elmDiv.appendChild(this.ctrls.fontSize.selector);
+        this.expandArrayToSelector(this.ctrls.fontSize.selector, [10, 12, 14, 16, 18, 20, 24, 36, 48, 60, 72], 12);
+        this.ctrls.fontSize.selector.parentUi = this;
+        this.ctrls.fontSize.selector.elmsToUpdate = elmsToUpdate;
+        if (!labelText) {
+          labelText = "FontSize";
+        }
 
-      function rollAtomicIds(obj) {
-        if (obj.checked) {
-          if (DB_IDS.hasUcs2IdsDB() && elmAtomicIds.innerHTML.length == 0) {
+        this.ctrls.fontSize.selector.addEventListener("change", this.callbackToUpdateFontSize);
+        return true;
+        
+      }
+      CurrentUi.prototype.callbackToRollAtomicIds = function() {
+        // this function is called as callback from checkbox element
+        if (!this.elmToUpdate) {
+          return;
+        } else
+        if (this.checked) {
+          if (DB_IDS.hasUcs2IdsDB() && this.elmToUpdate.innerHTML.length == 0) {
             var ucs;
             var atomicIds = new Array();
             for ( ucs in DB_IDS.ucs2idsDB ) {
@@ -874,33 +1002,45 @@
                 atomicIds.push(ucs);
               }
             }
-            elmAtomicIds.innerHTML = atomicIds.join(", ");
+            this.elmToUpdate.innerHTML = atomicIds.join(", ");
           }
-          elmAtomicIds.style.display = "block";
+          this.elmToUpdate.style.display = "block";
         } else {
-          elmAtomicIds.style.display = "none";
+          this.elmToUpdate.style.display = "none";
         }
       }
+      CurrentUi.prototype.addControlToRollAtomicIds = function(elmDiv, labelText, elmToUpdate) {
+        if (!labelText) {
+          labelText = "show atomic IDS";
+        }
+        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
+        this.ctrls.rollAtomicIds = {};
+        this.ctrls.rollAtomicIds.checkBox = cbal[0];
+        this.ctrls.rollAtomicIds.checkBox.parentUi = this;
+        this.ctrls.rollAtomicIds.checkBox.elmToUpdate = elmToUpdate;
+        this.ctrls.rollAtomicIds.label = cbal[1];
 
-      function updateUsePng(obj) {
-        usePng = obj.checked;
+        this.ctrls.rollAtomicIds.checkBox.addEventListener("change", this.callbackToRollAtomicIds);
+        return true;
       }
-
-      function updatePngHeight() {
-        pngHeight = parseInt(this.value, 10);
+      CurrentUi.prototype.callbackToUpdateUsePng = function() {
+        // this function is called as callback from checkbox element
+        this.parentUi.usePng = this.checked;
       }
+      CurrentUi.prototype.addControlToUsePng = function(elmDiv, labelText) {
+        if (!labelText) {
+          labelText = "show PNG";
+        }
+        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
+        this.ctrls.usePng = {};
+        this.ctrls.usePng.checkBox = cbal[0];
+        this.ctrls.usePng.checkBox.parentUi = this;
+        this.ctrls.usePng.label = cbal[1];
 
-      function updatePngRow() {
-        maxPngRows = parseInt(this.value, 10);
-        updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
+        this.ctrls.usePng.checkBox.addEventListener("change", this.callbackToUpdateUsePng);
+        return true;
       }
-
-      function updatePngColumn() {
-        maxPngColumns = parseInt(this.value, 10);
-        updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
-      }
-
-      function checkAllSources() {
+      CurrentUi.prototype.checkAllSources = function() {
         var elmBtnToParseCJKUSR = document.getElementById("ButtonToParseCJKUSR");
         for ( var elm = elmBtnToParseCJKUSR; elm.nextElementSibling != null; elm = elm.nextElementSibling ) {
           if (elm.id.match(/^ChkboxForSrc/)) {
@@ -908,8 +1048,7 @@
           }
         }
       }
-
-      function uncheckAllSources() {
+      CurrentUi.prototype.uncheckAllSources = function() {
         var elmBtnToParseCJKUSR = document.getElementById("ButtonToParseCJKUSR");
         for ( var elm = elmBtnToParseCJKUSR; elm.nextElementSibling != null; elm = elm.nextElementSibling ) {
           if (elm.id.match(/^ChkboxForSrc/)) {
@@ -917,6 +1056,7 @@
           }
         }
       }
+      window.currentUi = new CurrentUi();
 
     -->
     </script>
@@ -932,51 +1072,7 @@
         </div>
       </div>
       <div id="MainContainer">
-        <form id="Setting">
-          <input type="checkbox" id="ChkboxForDebug"   onclick="updateDebug(this)">debug
-          <input type="checkbox" id="ChkboxForOptions" onclick="rollOptionForms(this)">show options
-          <input type="checkbox" id="ChkboxForSideBar" onclick="rollSideBar(this)">show sideBar
-        </form>
-        <div id="OptionForms">
-          <select id="FontSize">
-            <option value="10">10
-            <option value="12" selected>12
-            <option value="14">14
-            <option value="16">16
-            <option value="18">18
-            <option value="20">20
-            <option value="24">24
-            <option value="36">36
-            <option value="48">48
-            <option value="60">60
-            <option value="72">72
-          </select>
-          <br>
-          <input type="text" id="PngDir"> dirname for PNG files
-          <select id="PngHeight">
-            <option value="20">20
-            <option value="30">30
-            <option value="40">40
-            <option value="50" selected>50
-            <option value="60">60
-            <option value="70">70
-          </select>
-          height of picture
-          <select id="PngRow">
-            <option value="5">5
-            <option value="10" selected>10
-            <option value="20">20
-            <option value="30">30
-          </select> nRows
-          <select id="PngColumn">
-            <option value="1">1
-            <option value="2" selected>2
-            <option value="3">3
-            <option value="4">4
-            <option value="5">5
-          </select> nColumns
-          <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
-        </div>
+        <div id="Controls"></div>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="PathToIds">
           <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="window.currentUi.loadIdsFile()">
@@ -1004,49 +1100,50 @@
           <input type="button" id="ButtonToUncheckAll" value="Exclude All" onclick="uncheckAllSources()">
         </form>
         <form name="CheckComponent" onsubmit="return false;">
-          <input type="text" name="Components">
-          <input type="button" value="lookup" onclick="lookupComponents()">
-          <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
+          <input id="txtQuery" type="text" name="Components">
+          <input id="btnQuery" type="button" value="lookup" onclick="lookupComponents()">
+          <input id="btnDecompose" type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
           <br>
           <input type="checkbox" id="ChkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
           <br>
         </form>
-        <div id="StatusMsg">
-        </div>
-        <div id="FoundIds">
-          <div id="FoundIdsNavigatorHeader">
-            <input type="button" value="prev" onclick="movePageByDelta(-1)">
-            <select id="PageSelectorHeader"></select>
-            <input type="button" value="next" onclick="movePageByDelta( 1)">
-          </div>
-          <div id="FoundIdsBody"></div>
-          <div id="FoundIdsTableWrap">
-            <table id="FoundIdsTable" border="0" cellspacing="0"></table>
-          </div>
-          <div id="FoundIdsNavigatorFooter">
-            <input type="button" value="prev" onclick="movePageByDelta(-1)">
-            <select id="PageSelectorFooter"></select>
-            <input type="button" value="next" onclick="movePageByDelta( 1)">
-          </div>
-        </div>
+        <div id="StatusMsg"></div>
+        <div id="FoundResults"></div>
       </div>
-      <div id="Footer">
-      </div>
+      <div id="Footer"></div>
     </div>
     <script>
-      document.getElementById("PageSelectorHeader").addEventListener("change", movePageBySelector);
-      document.getElementById("PageSelectorFooter").addEventListener("change", movePageBySelector);
-      document.getElementById("FontSize").addEventListener("change", updateFontSize);
-      document.getElementById("PngHeight").addEventListener("change", updatePngHeight);
-      document.getElementById("PngRow").addEventListener("change", updatePngRow);
-      document.getElementById("PngColumn").addEventListener("change", updatePngColumn);
+      window.currentUi = new CurrentUi();
+      var currentUi = window.currentUi;
+
+      // -- setup control panels
+      currentUi.elmDivFoundResults = document.getElementById("FoundResults");
+      currentUi.elmFoundResultsText = document.createElement("DIV");
+      currentUi.elmDivFoundResults.appendChild(currentUi.elmFoundResultsText);
+      currentUi.addGlyphTable(currentUi.elmDivFoundResults);
+
+      var elmControls = document.getElementById("Controls");
+      currentUi.addControlToRollOptions(elmControls, "show Options");
+      currentUi.addControlToRollSideBar(elmControls, "show SideBar");
+      currentUi.addControlToSort(elmControls, "sort by Total Strokes");
+
+      currentUi.elmOptionControls = document.createElement("DIV");
+      currentUi.elmOptionControls.style.display = "none";
+      elmControls.appendChild(currentUi.elmOptionControls);
+
+      currentUi.addControlToUpdateFontSize(currentUi.elmOptionControls, "FontSize", [currentUi.elmFoundResultsText]);
+      currentUi.addControlToUsePng(currentUi.elmOptionControls);
+      currentUi.glyphTable.addControl(currentUi.elmOptionControls);
+
+      // -- setup elementary buttons
+      document.getElementById("btnQuery").addEventListener("click", );
+
+
       elmSideBar = document.getElementById("SideBar");
       elmAtomicIds = document.getElementById("AtomicIds");
-      elmOptionForms = document.getElementById("OptionForms");
       elmStatusMsg = document.getElementById("StatusMsg");
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
-      updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
     </script>
   </body>
 </html>
