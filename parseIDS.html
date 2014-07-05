@@ -25,13 +25,13 @@
       margin-left: 1%;
       float: left;
     }
-    #FoundIdsNavigatorHeader {
+    *.FoundIdsNavigatorHeader {
       display: none;
     }
     #FoundIdsTable {
       display: none;
     }
-    #FoundIdsNavigatorFooter {
+    *.FoundIdsNavigatorFooter {
       display: none;
     }
     #Footer {
@@ -542,10 +542,12 @@
           };
           Navigator.prototype.addHeaderAndFooter = function(elmTable) {
             this.elmHeader = document.createElement("DIV");
+            this.elmHeader.setAttribute("class", "FoundIdsNavigatorHeader");
             elmTable.parentElement.insertBefore(this.elmHeader, elmTable);
             this.addButtonsAndSelector(this.elmHeader);
 
             this.elmFooter = document.createElement("DIV");
+            this.elmFooter.setAttribute("class", "FoundIdsNavigatorFooter");
             elmTable.parentElement.insertBefore(this.elmFooter, elmTable);
             this.addButtonsAndSelector(this.elmFooter);
           }
@@ -706,13 +708,13 @@
         }
 
         if (this.usePng) {
-          this.elmTextFoundResults.style.display = "none";
+          this.elmFoundResultsText.style.display = "none";
           this.glyphTable.fillTableWithPng(arr);
           this.glyphTable.elmTable.style.display = "block";
         } else {
           this.glyphTable.elmTable.style.display = "none";
-          this.elmTextFoundResults.innerHTML = arr.join(", ");
-          this.elmTextFoundResultss.style.display = "block";
+          this.elmFoundResultsText.innerHTML = arr.join(", ");
+          this.elmFoundResultsText.style.display = "block";
         }
       };
       CurrentUi.prototype.loadFileByXHR = function(filePath, destName, msgElm, curBtn, nxtBtn) {
@@ -812,20 +814,20 @@
         var res = DB_IDS.lookupByString(queryStr);
 
         if (res.ignoredChars.length == res.components.length) {
-          this.elmStatusMsg.innerHTML = "no searcheable characters are found in the query \"" + queryStr "\"<br>";
+          this.elmStatusMsg.innerHTML = "no searcheable characters are found in the query \"" + queryStr + "\"<br>";
           return;
         }
 
-        this.elmStatusMsg.innerHTML = "";
+        elmStatusMsg.innerHTML = "";
         if (res.ignoredChars.length > 0) {
-          this.elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
+          elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
         }
 
         if (DB_IDS.CJKSR.isLoaded) {
           res.foundChars = DB_IDS.CJKSR.applyFilterToChars(res.foundChars, getSrcFilter());
         }
 
-        this.elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
+        elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
         if (this.glyphTable && this.glyphTable.navigator) {
           this.glyphTable.navigator.curPage = 0;
         }
@@ -838,7 +840,13 @@
       }
       CurrentUi.prototype.callbackToLookupComponents = function() {
         // this function is called as callback
-        this.parentUi.lookupComponents(this.value);
+        window.currentUi.lookupComponents( document.getElementById("txtQuery").value );
+      }
+      CurrentUi.prototype.callbackToUpdateAddUcsHex = function() {
+        // this function is called as callback
+        var currentUi = window.currentUi;
+        currentUi.addHexCodeToUcs = document.getElementById("ChkboxForHexUcs").checked;
+        currentUi.showFoundResults(currentUi.foundChars);
       }
       CurrentUi.prototype.decomposeSelectedComponents = function(wholeString, selectionStart, selectionEnd) {
         var curHead = wholeString.substring(0,selectionStart);
@@ -1101,10 +1109,10 @@
         </form>
         <form name="CheckComponent" onsubmit="return false;">
           <input id="txtQuery" type="text" name="Components">
-          <input id="btnQuery" type="button" value="lookup" onclick="lookupComponents()">
+          <input id="btnQuery" type="button" value="lookup">
           <input id="btnDecompose" type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
           <br>
-          <input type="checkbox" id="ChkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
+          <input type="checkbox" id="ChkboxForHexUcs">show UCS codepoint
           <br>
         </form>
         <div id="StatusMsg"></div>
@@ -1136,7 +1144,8 @@
       currentUi.glyphTable.addControl(currentUi.elmOptionControls);
 
       // -- setup elementary buttons
-      document.getElementById("btnQuery").addEventListener("click", );
+      document.getElementById("btnQuery").addEventListener("click", currentUi.callbackToLookupComponents);
+      document.getElementById("ChkboxForHexUcs").addEventListener("click", currentUi.callbackToUpdateAddUcsHex);
 
 
       elmSideBar = document.getElementById("SideBar");
