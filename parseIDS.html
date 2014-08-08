@@ -876,6 +876,9 @@
           elmStatusMsg.innerHTML = "decomposition is not available on this system";
         }
       }
+      CurrentUi.prototype.callbackToDecomposeSelectedComponents = function() {
+        // this function is called as callback
+      };
 
       // ----- utility to add INPUT elements
       CurrentUi.prototype.addElmCheckBoxAndLabel = function(elmDiv, labelText) {
@@ -1110,7 +1113,7 @@
         <form name="CheckComponent" onsubmit="return false;">
           <input id="txtQuery" type="text" name="Components">
           <input id="btnQuery" type="button" value="lookup">
-          <input id="btnDecompose" type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
+          <input id="btnDecompose" type="button" value="decompose selected chars">
           <br>
           <input type="checkbox" id="ChkboxForHexUcs">show UCS codepoint
           <br>
@@ -1146,7 +1149,7 @@
       // -- setup elementary buttons
       document.getElementById("btnQuery").addEventListener("click", currentUi.callbackToLookupComponents);
       document.getElementById("ChkboxForHexUcs").addEventListener("click", currentUi.callbackToUpdateAddUcsHex);
-
+      document.getElementById("btnDecompose").addEventListener("click", currentUi.callbackToDecomposeSelectedComponents);
 
       elmSideBar = document.getElementById("SideBar");
       elmAtomicIds = document.getElementById("AtomicIds");
