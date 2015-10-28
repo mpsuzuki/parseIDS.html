@@ -25,13 +25,16 @@
       margin-left: 1%;
       float: left;
     }
-    *.FoundIdsNavigatorHeader {
+    #OptionForms {
+      display: none;
+    }
+    #FoundIdsNavigatorHeader {
       display: none;
     }
     #FoundIdsTable {
       display: none;
     }
-    *.FoundIdsNavigatorFooter {
+    #FoundIdsNavigatorFooter {
       display: none;
     }
     #Footer {
@@ -47,11 +50,13 @@
       // -- constant DOM element
       var elmSideBar = null;
       var elmAtomicIds = null;
+      var elmOptionForms = null;
       var elmStatusMsg = null;
       var elmFoundIdsBody = null;
       var elmFoundIdsTable = null;
 
       // -- global variables
+      var showDebug = false;
       var showOptions = false;
       var usePng = false;
       var maxPngRows = 10;
@@ -60,279 +65,49 @@
       var curPage = 0;
       var sideBarWidthPercent = 20;
       var sortTotalStroke = false;
+      var foundChars = null;
 
-      // -------------------------------------------------------
-      var DB_IDS = {};
-      DB_IDS.Unihan = {};
-      DB_IDS.Unihan.parent = DB_IDS;
-      DB_IDS.CJKSR = {};
-      DB_IDS.CJKSR.parent = DB_IDS;
-
-      // -------------------------------------------------------
-      DB_IDS.Unihan.isLoaded = false;
-      DB_IDS.Unihan.initByTSV = function(unihanText) {
-        var i, j, l, toks, u, ustr, prop, val;
-        var unihanItems = unihanText.split("\n");
-        j = 0;
-        for ( i in unihanItems ) {
-          if ( unihanItems[i].slice(0,2) == "U+" ) {
-            toks = unihanItems[i].split("\t");
-            l = toks[0].length;
-            u = parseInt(toks[0].slice(2,l), 16);
-            if (u < 0x10000) {
-              ustr = String.fromCharCode(u);
-            } else if (u < 0xEFFFF) {
-              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
-            } else if (u < 0x100000) {
-              continue;
-            // Unihan DB should not mention about PUA with Ch. Entity Ref.
-            // } else if (u < 0x110000) {
-            //   ustr = crc2charName[u - 0x100000];
-            } else {
-              continue;
-            }
-            prop  = toks[1];
-            val   = toks[2];
-            if ( prop != "kTotalStrokes" ) {
-              continue;
-            }
-            if ( this[prop] == undefined ) {
-              this[prop] = new Array();
-            }
-            this[prop][ustr] = parseInt(val, 10);
-            j += 1;
-          }
-        }
-        this.isLoaded = true;
-        return unihanItems.length;
-      };
-      DB_IDS.Unihan.sortCharsByTotalStrokes = function(chars) {
-        if (!DB_IDS.Unihan.isLoaded) {
-          return chars;
-        }
-        if (chars == null) {
-          return chars;
-        }
-        var results = chars.sort(function(a, b) {
-          var tsa = DB_IDS.Unihan.kTotalStrokes[a];
-          var tsb = DB_IDS.Unihan.kTotalStrokes[b];
-          if (tsa != undefined && tsb != undefined) {
-            return (tsa - tsb);
-          } else if (tsa == undefined && tsb == undefined) {
-            return (a - b);
-          } else if (tsa != undefined) {
-            return -1;
-          } else {
-            return 1;
-          }
-        });
-        return results;
-      };
-      DB_IDS.Unihan.sortCharsByUCS = function(chars) {
-        if (chars == null) {
-          return chars;
-        }
-        var charsUcs = {};
-        for ( var i = chars.length; i > 0; ) {
-          i -= 1;
-          charsUcs[chars[i]] = DB_IDS.ucsArrToUcs4Codepoint(chars[i]);
-        }
-        var charsSorted = chars.sort(function(a, b) {
-          return (charsUcs[a] - charsUcs[b]);
-        });
-        return charsSorted;
-      }
-
-      // -------------------------------------------------------
-      DB_IDS.CJKSR.isLoaded = false;
-      DB_IDS.CJKSR.ucs2srcInfo = {};
-      DB_IDS.CJKSR.initByIsoTxt = function(isoCjkSrcTxt) {
-        var lines = isoCjkSrcTxt.split("\n");
-        var numLines = lines.length;
-        while (lines.length > 0) {
-          var toks = lines.shift().split(";");
-          if (toks.length < 11) {
-            continue;
-          }
-
-          var u = parseInt(toks.shift().replace(/^U\+/, ""), 16);
-          if (u < 0x10000) {
-            u = String.fromCharCode(u);
-          } else
-          if (u < 0xF0000) {
-            u = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
-          }
-
-          this.ucs2srcInfo[u] = {};
-          toks.shift(); // discard RS info
-          this.ucs2srcInfo[u]["G"]  = toks.shift();
-          this.ucs2srcInfo[u]["T"]  = toks.shift();
-          this.ucs2srcInfo[u]["J"]  = toks.shift();
-          this.ucs2srcInfo[u]["K"]  = toks.shift();
-          this.ucs2srcInfo[u]["V"]  = toks.shift();
-          this.ucs2srcInfo[u]["H"]  = toks.shift();
-          this.ucs2srcInfo[u]["KP"] = toks.shift();
-          this.ucs2srcInfo[u]["U"]  = toks.shift();
-          this.ucs2srcInfo[u]["M"]  = toks.shift();
-        }
-        this.isLoaded = true;
-        return numLines;
-      }
-      DB_IDS.CJKSR.checkSrcCoverage = function(ustr, coverage) {
-        if (!coverage || !coverage.length) {
-          return true;
-        }
-
-        for (var i = 0; i < coverage.length; i += 1) {
-          if (this.ucs2srcInfo[ustr] && this.ucs2srcInfo[ustr][coverage[i]].length) {
-            return true;
-          }
-        }
-
-        return false;
-      }
-      DB_IDS.CJKSR.applyFilterToChars = function(chars, coverage) {
-        var results = [];
-        for (var i = 0; i < chars.length; i += 1) {
-          if (this.checkSrcCoverage(chars[i], coverage)) {
-            results.push(chars[i]);
-          }
-        }
-        return results;
-      };
-
-      // -------------------------------------------------------
-
-      DB_IDS.crc16ascii = function(s) {
-        var crc = 0xFFFF;
-        var j, i;
- 
-        for (i = 0; i < s.length; i++) {
- 
-          c = s.charCodeAt(i);
-          if (c > 255) {
-            throw new RangeError();
-          }
-          j = (c ^ (crc >> 8)) & 0xFF;
-          crc = this.crc16ascii.crc16Table[j] ^ (crc << 8);
-        }
- 
-        return ((crc ^ 0) & 0xFFFF);
-      } 
-      DB_IDS.crc16ascii.crc16Table = [0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5,
-                                      0x60c6, 0x70e7, 0x8108, 0x9129, 0xa14a, 0xb16b,
-                                      0xc18c, 0xd1ad, 0xe1ce, 0xf1ef, 0x1231, 0x0210,
-                                      0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
-                                      0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c,
-                                      0xf3ff, 0xe3de, 0x2462, 0x3443, 0x0420, 0x1401,
-                                      0x64e6, 0x74c7, 0x44a4, 0x5485, 0xa56a, 0xb54b,
-                                      0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
-                                      0x3653, 0x2672, 0x1611, 0x0630, 0x76d7, 0x66f6,
-                                      0x5695, 0x46b4, 0xb75b, 0xa77a, 0x9719, 0x8738,
-                                      0xf7df, 0xe7fe, 0xd79d, 0xc7bc, 0x48c4, 0x58e5,
-                                      0x6886, 0x78a7, 0x0840, 0x1861, 0x2802, 0x3823,
-                                      0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969,
-                                      0xa90a, 0xb92b, 0x5af5, 0x4ad4, 0x7ab7, 0x6a96,
-                                      0x1a71, 0x0a50, 0x3a33, 0x2a12, 0xdbfd, 0xcbdc,
-                                      0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
-                                      0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03,
-                                      0x0c60, 0x1c41, 0xedae, 0xfd8f, 0xcdec, 0xddcd,
-                                      0xad2a, 0xbd0b, 0x8d68, 0x9d49, 0x7e97, 0x6eb6,
-                                      0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0x0e70,
-                                      0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a,
-                                      0x9f59, 0x8f78, 0x9188, 0x81a9, 0xb1ca, 0xa1eb,
-                                      0xd10c, 0xc12d, 0xf14e, 0xe16f, 0x1080, 0x00a1,
-                                      0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
-                                      0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c,
-                                      0xe37f, 0xf35e, 0x02b1, 0x1290, 0x22f3, 0x32d2,
-                                      0x4235, 0x5214, 0x6277, 0x7256, 0xb5ea, 0xa5cb,
-                                      0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
-                                      0x34e2, 0x24c3, 0x14a0, 0x0481, 0x7466, 0x6447,
-                                      0x5424, 0x4405, 0xa7db, 0xb7fa, 0x8799, 0x97b8,
-                                      0xe75f, 0xf77e, 0xc71d, 0xd73c, 0x26d3, 0x36f2,
-                                      0x0691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
-                                      0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9,
-                                      0xb98a, 0xa9ab, 0x5844, 0x4865, 0x7806, 0x6827,
-                                      0x18c0, 0x08e1, 0x3882, 0x28a3, 0xcb7d, 0xdb5c,
-                                      0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
-                                      0x4a75, 0x5a54, 0x6a37, 0x7a16, 0x0af1, 0x1ad0,
-                                      0x2ab3, 0x3a92, 0xfd2e, 0xed0f, 0xdd6c, 0xcd4d,
-                                      0xbdaa, 0xad8b, 0x9de8, 0x8dc9, 0x7c26, 0x6c07,
-                                      0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
-                                      0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba,
-                                      0x8fd9, 0x9ff8, 0x6e17, 0x7e36, 0x4e55, 0x5e74,
-                                      0x2e93, 0x3eb2, 0x0ed1, 0x1ef0];
-      DB_IDS.crc2charName = new Array();
-      DB_IDS.charName2crc = function(s) {
-        var i;
-        for (i = 0; s.charCodeAt(i) < 256; i += 1 ) {
-          if (s[i] == ";") {
-            break;
-          }
-        }
-        if (s[i] != ";") {
-          i -= 1;
-        }
-        var charName = s.substr(0, i + 1);
-        var charCode = this.crc16ascii(charName.substr(1, charName.length - 2));
-        if (this.crc2charName[charCode] == undefined) {
-          this.crc2charName[charCode] = charName;
-        }
-        return charCode + 0x100000;
-      }
-      DB_IDS.utf16StrToUcsArray = function(ustr) {
-        var i, c, u, arr;
+      function utf16Str2UcsArr(ustr) {
+        var i, c, arr;
         arr = new Array();
         for (i = 0; i < ustr.length; i += 1) {
-          if (ustr[i] == "&") {
-            var u = this.charName2crc(ustr.slice(i));
-            c = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
-            arr.push(c);
-            i += this.crc2charName[u - 0x100000].length - 1;
-          } else {
-            c = ustr.charCodeAt(i);
-            if (0xD800 <= c && c <= 0xDBFF && (i+1) < ustr.length) {
-              c = ustr.charCodeAt(i+1);
-              if (0xDC00 <= c && c <= 0xDFFF) {
-                arr.push(ustr.substr(i,2));
-                i += 1;
-                continue;
-              }
+          c = ustr.charCodeAt(i);
+          if (0xD800 <= c && c <= 0xDBFF && (i+1) < ustr.length) {
+            c = ustr.charCodeAt(i+1);
+            if (0xDC00 <= c && c <= 0xDFFF) {
+              arr.push(ustr.substr(i,2));
+              i += 1;
+              continue;
             }
-            arr.push(ustr.substr(i,1));
           }
+          arr.push(ustr.substr(i,1));
         }
         return arr;
       }
-      DB_IDS.ucsArrToUcs4Codepoint = function(ustr) {
-        // single BMP character
-        if (ustr.length == 1) {
-          return ustr.charCodeAt(0);
-        }
-        else if (ustr[0] == "&") {
-        // CRC-16 hash value on the 2nd PUA plane (0x100000)
-          return (0x100000 + this.crc16ascii(ustr.split(/[&;]/)[1]));
-        }
 
-        // surrogate
-        return ( ((ustr.charCodeAt(0) & 0x03FF) << 10) + (ustr.charCodeAt(1) & 0x03FF) + 0x10000);
+      function ucsArrToUcs4Codepoint(ustr) {
+        if (ustr.length > 1) {
+          return ( ((ustr.charCodeAt(0) & 0x03FF) << 10) + (ustr.charCodeAt(1) & 0x03FF) + 0x10000);
+        }
+        return ustr.charCodeAt(0);
       }
-      DB_IDS.IdsItem = function() {
+
+      var IdsItem = function() {
         this.idsArrays = new Array();
         this.cacheN = new Array();
       }
-      DB_IDS.IdsItem.prototype.setUcs = function(ucs) {
+      IdsItem.prototype.setUcs = function(ucs) {
         this.ucs = ucs;
         return this;
       }
-      DB_IDS.IdsItem.prototype.setIdss = function(idss) {
+      IdsItem.prototype.setIdss = function(idss) {
         this.idss = idss;
         for (i in this.idss) {
-          this.idsArrays[i] = DB_IDS.utf16StrToUcsArray(this.idss[i]);
+          this.idsArrays[i] = utf16Str2UcsArr(this.idss[i]);
         }
         return this;
       }
-      DB_IDS.IdsItem.prototype.countAComponent = function(c) {
+      IdsItem.prototype.countAComponent = function(c) {
         var i, j, u;
         var idsArr;
         var numFound, maxNumFound;
@@ -348,8 +123,8 @@
             if (idsArr.length > 1) {
               for ( j in idsArr ) {
                 u = idsArr[j];
-                if ( DB_IDS.ucs2idsDB[u] != undefined ) {
-                  numFound += DB_IDS.ucs2idsDB[u].countAComponent(c);
+                if ( ucs2idsDB[u] != undefined ) {
+                  numFound += ucs2idsDB[u].countAComponent(c);
                 }
               }
             }
@@ -360,364 +135,52 @@
         this.cacheN[c] = maxNumFound;
         return maxNumFound;
       }
-      DB_IDS.ucs2idsDB = new Array();
-      DB_IDS.hasUcs2IdsDB = function() {
-        return (this.ucs2idsDB != undefined && this.ucs2idsDB.length > 0);
-      };
-      DB_IDS.initUcs2IdsDBByTSV = function(idsText) {
-        var ucsName, ucs, toks, i, j, k;
-        var idsItems = idsText.split("\n");
-        for ( i in idsItems ) {
-          toks = idsItems[i].split("\t");
-          if (toks.length < 3) {
-            continue;
-          }
-          ucsName = toks.shift();
-          ucs = toks.shift();
-          if (ucs[0] == "&") {
-            ucs = this.charName2crc(ucs);
-            ucs = String.fromCharCode( ( ( ucs - 0x10000 ) >> 10 ) | 0xD800, ( ( ucs - 0x10000 ) & 0x3FF) | 0xDC00 );
-          }
-          this.ucs2idsDB[ucs] = (new DB_IDS.IdsItem()).setUcs(ucs).setIdss(toks);
-        }
-        return idsItems.length;
-      };
-      DB_IDS.lookupByString = function(queryStr) {
-        var res = {};
-        res.components = this.utf16StrToUcsArray(queryStr);
-        res.ignoredChars = new Array();
-        res.foundChars = [];
 
-        var lookupDB = new Array();
-        var candidates = new Array();
-        var results = new Array();
-        var i, j, c, d, n, u;
 
-        for ( i in res.components ) {
-          c = res.components[i];
-          u = DB_IDS.ucsArrToUcs4Codepoint(c);
-          d = DB_IDS.ucs2idsDB[c];
-          if ( d == undefined || d == null ) {
-            res.ignoredChars.push(c);
-          } else if ( lookupDB[c] == undefined ) {
-            lookupDB[c] = 1;
-          } else {
-            lookupDB[c] += 1;
-          }
-        }
-
-        if (res.ignoredChars.length == res.components.length) {
-          return res;
-        }
-
-        for ( u in DB_IDS.ucs2idsDB ) {
-          candidates.push(u);
-        }
-
-        for ( c in lookupDB ) {
-          for ( i in candidates ) {
-            u = candidates[i];
-            if ( DB_IDS.ucs2idsDB[u].countAComponent(c) >= lookupDB[c] ) {
-              results.push(u);
-            }
-          }
-          candidates = results;
-          results = new Array();
-        }
-
-        res.foundChars = candidates;
-        return res;
-      }
-      DB_IDS.decomposeUtf16Str = function(ustr) {
-        var ucs4arr = DB_IDS.utf16StrToUcsArray(ustr);
-        var result = new Array();
-        while (ucs4arr.length > 0) {
-          var u = ucs4arr.shift();
-          if (this.ucs2idsDB[u] != undefined && this.ucs2idsDB[u].idss.length > 0) {
-            result.push("(" + this.ucs2idsDB[u].idss.join("|") + ")");
-          } else {
-            result.push("(" + u + ")");
-          }
-        }
-        return result;
-      }
-      DB_IDS.addHexCodePointToUcsArray = function(inArr) {
-        var outArr = new Array();
-        for ( var i in inArr ) {
-          var ucsInt = this.ucsArrToUcs4Codepoint(inArr[i]);
-          var ucsStr = "U+" + ucsInt.toString(16).toUpperCase();
-          if (0xFFFFF < ucsInt && ucsInt < 0x110000) {
-            ucsStr = this.crc2charName[ucsInt - 0x100000];
-          }
-          if ( !DB_IDS.Unihan.isLoaded ) {
-            outArr.push( inArr[i] + "(" + ucsStr + ")" );
-          } else if ( DB_IDS.Unihan.kTotalStrokes == undefined || inArr[i] == undefined || DB_IDS.Unihan.kTotalStrokes[inArr[i]] == undefined ) {
-            outArr.push( inArr[i] + "(" + ucsStr + ":XXX)" );
-          } else {
-            outArr.push( inArr[i] + "(" + ucsStr + ":" + DB_IDS.Unihan.kTotalStrokes[inArr[i]].toString(10) + ")" );
-          }
-        }
-        return outArr;
-      }
 
       // -------------------------------------------------------
       var brokenFileApi = false;
 
+      var ucs2idsDB = new Array();
+      var hasUcs2IdsDB = false;
+      var idsText = new String();
+
+      var unihanDB = new Array();
+      var hasUnihanDB = false;
+      var unihanText = new String();
+      var CJKU_SR = new String();
+      var CJKU_SR_DB = new Array();
+
+      function setGlobalText(destName, str) {
+        switch (destName) {
+        case "idsText":
+          idsText = str;
+          break;
+        case "unihanText":
+          unihanText = str;
+          break;
+        case "CJKU_SR":
+          CJKU_SR = str;
+          break;
+        default:
+          break;
+        }
+      }
+
+      function getGlobalText(destName) {
+        switch (destName) {
+        case "idsText":
+          return idsText;
+        case "unihanText":
+          return unihanText;
+        case "CJKU_SR":
+          return CJKU_SR;
+        default:
+          return null;
+        }
+      }
       // -------------------------------------------------------
-
-      var CurrentUi = function() {
-        this.usePng = false;
-        this.foundChars = [];
-        this.ctrls = {};
-        return this;
-      };
-      CurrentUi.prototype.expandArrayToSelector = function(elmSelector, arr, defaultValue) {
-        for (var i = 0; i < arr.length; i += 1) {
-          var o = document.createElement("OPTION");
-          o.setAttribute("value", arr[i]);
-          elmSelector.appendChild(o);
-          o.appendChild(document.createTextNode(o.value));
-          if (defaultValue == arr[i]) {
-            elmSelector.selectedIndex = i;
-          }
-        }
-      };
-      CurrentUi.prototype.addGlyphTable = function(elmParent, noNavigator) {
-
-        // ----- table of cropped PNG table with page navigator -----
-        var GlyphTable = function() {
-          // navigator before/after glyph table
-          var Navigator = function(glyphTable) {
-            this.glyphTable = glyphTable;
-            this.curPage = 0;
-            return this;
-          };
-          Navigator.prototype.movePageByDelta = function(delta) {
-            var i = this.curPage + delta;
-            try {
-              this.elmHeader.selector.childNodes[i].selected = true;
-              this.elmFooter.selector.childNodes[i].selected = true;
-            }
-            catch (err) {
-              // no need if we don't care inconsistent current page case
-              // this.elmHeader.childNodes[curPage].selected = true;
-              // this.elmFooter.childNodes[curPage].selected = true;
-              return; // invalid page number (no prev or no next)
-            }
-            this.curPage = i;
-            this.glyphTable.showFoundCharsPartial();
-          };
-          Navigator.prototype.callbackToMoveNextPage = function() {
-            // this function is called as callback from button element
-            this.navigator.movePageByDelta(+1);
-          };
-          Navigator.prototype.callbackToMovePreviousPage = function() {
-            // this function is called as callback from button element
-            this.navigator.movePageByDelta(-1);
-          };
-          Navigator.prototype.callbackToMovePageBySelector = function() {
-            // this function is called as callback from selector element
-            this.navigator.curPage = parseInt(this.value, 10);
-            this.navigator.elmHeader.childNodes[curPage].selected = true;
-            this.navigator.elmFooter.childNodes[curPage].selected = true;
-            this.navigator.glyphTable.showFoundCharsPartial();
-          };
-          Navigator.prototype.addButtonsAndSelector = function(elmDiv) {
-            // add button/selector/button to header, and add event listeners
-            var pagePrev = document.createElement("INPUT");
-            pagePrev.setAttribute("type", "button");
-            pagePrev.setAttribute("value", "prev");
-            pagePrev.addEventListener("click", this.callbackToMovePreviousPage);
-            elmDiv.appendChild(pagePrev);
-
-            var pageSelector = document.createElement("SELECT");
-            pageSelector.addEventListener("change", this.callbacktoMovePageBySelector);
-            elmDiv.appendChild(pageSelector);
-
-            var pageNext = document.createElement("INPUT");
-            pageNext.setAttribute("type", "button");
-            pagePrev.setAttribute("value", "next");
-            pageNext.addEventListener("click", this.callbackToMoveNextPage);
-            elmDiv.appendChild(pageNext);
-          };
-          Navigator.prototype.addHeaderAndFooter = function(elmTable) {
-            this.elmHeader = document.createElement("DIV");
-            this.elmHeader.setAttribute("class", "FoundIdsNavigatorHeader");
-            elmTable.parentElement.insertBefore(this.elmHeader, elmTable);
-            this.addButtonsAndSelector(this.elmHeader);
-
-            this.elmFooter = document.createElement("DIV");
-            this.elmFooter.setAttribute("class", "FoundIdsNavigatorFooter");
-            elmTable.parentElement.insertBefore(this.elmFooter, elmTable);
-            this.addButtonsAndSelector(this.elmFooter);
-          }
-
-          this.addNavigator = function() {
-            this.navigator = new Navigator();
-            this.navigator.addHeaderAndFooter(this.elmTable);
-            return this.nagigator;
-          };
-
-          this.picDir = "PNG";
-          this.glyphs = [];
-
-          return this;
-        };
-        GlyphTable.prototype.expandTableMatrix = function() {
-          var c, r, rs, x, y;
-          if ( this.elmTable.rows.length < this.maxPngRows ) {
-            for ( y = this.elmTable.rows.length; y < rows; y += 1 ) {
-              this.elmTable.insertRow(-1);
-            }
-          }
-          rs = this.elmTable.rows;
-          if ( rs[rs.length - 1].cells.length < (2 * this.maxPngColumns) ) {
-            for ( y = 0; y < this.elmTable.rows.length; y += 1 ) {
-              r = this.elmTable.rows[y];
-              for ( x = r.cells.length; x < (2 * this.maxPngColumns); x += 1 ) {
-                r.insertCell(-1);
-                r.lastChild.appendChild(document.createTextNode(""));
-                r.insertCell(-1);
-                r.lastChild.appendChild(document.createElement("img"));
-              }
-            }
-          }
-        };
-        GlyphTable.prototype.updateTableMatrix = function() {
-          var c, r, x, y;
-          this.expandTableMatrix();
-
-          for ( y = 0; y < this.elmTable.rows.length; y += 1 ) {
-            r = this.elmTable.rows[y];
-            for ( x = 0; x < r.cells.length; x += 2 ) {
-              if (y < rows && x < (columns*2) ) {
-                r.cells[x].style.display = "";
-                r.cells[x+1].style.display = "";
-              } else {
-                r.cells[x].style.display = "none";
-                r.cells[x].lastChild.data = "";
-                r.cells[x+1].style.display = "none";
-                r.cells[x+1].lastChild.src = "";
-              }
-            }
-          }
-        };
-        GlyphTable.prototype.fillTableWithPng = function(inArr) {
-          var i, r, x, y;
-          var ctxt, txt, cimg, img;
-          var pngDir = this.picDir.value;
-          for ( y = 0; y < this.maxPngRows; y += 1 ) {
-            r = this.elmTable.rows[y];
-            for ( x = 0; x < this.maxPngColumns; x += 1 ) {
-              i = ( x * this.maxPngRows ) + y;
-              ctxt = r.cells[x*2];
-              cimg = r.cells[(x*2) + 1];
-              txt = ctxt.childNodes[0];
-              img = cimg.childNodes[0];
-              if ( i < inArr.length ) {
-                var ustr = inArr[i].split("(");
-                var uhex = DB_IDS.ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
-                var subDir = uhex.slice(0,-2);
-                var txt, img;
-
-                txt.data = inArr[i];
-
-                img.height = pngHeight;
-                img.align = "middle";
-                img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
-
-                ctxt.style.display = "";
-                cimg.style.display = "";
-
-                if ( x == 0 ) {
-                  ctxt.style.borderLeft = "1px solid black";
-                }
-                cimg.style.borderRight = "1px solid black";
-
-                if ( y == 0 ) {
-                  ctxt.style.borderTop = "1px solid black";
-                  cimg.style.borderTop = "1px solid black";
-                }
-                ctxt.style.borderBottom = "1px solid black";
-                cimg.style.borderBottom = "1px solid black";
-              } else {
-                ctxt.style.display = "none";
-                cimg.style.display = "none";
-              }
-            }
-          }
-        };
-        GlyphTable.prototype.callbackToUpdatePngHeight = function() {
-          this.parentGlyphTable.pngHeight = parseInt(this.value, 10);
-        };
-        GlyphTable.prototype.callbackToUpdatePngRow = function() {
-          this.parentGlyphTable.pngRow = parseInt(this.value, 10);
-          this.parentGlyphTable.updateTableMatrix();
-        };
-        GlyphTable.prototype.callbackToUpdatePngColumn = function() {
-          this.parentGlyphTable.pngColumn = parseInt(this.value, 10);
-          this.parentGlyphTable.updateTableMatrix();
-        };
-        GlyphTable.prototype.addControl = function(elmDiv) {
-          elmDiv.appendChild(document.createTextNode("|"));
-          elmDiv.appendChild(document.createTextNode("IMG Height"));
-          this.elmPngHeight = document.createElement("SELECT");
-          elmDiv.appendChild(this.elmPngHeight);
-          this.elmPngHeight.parentGlyphTable = this;
-          this.parentUi.expandArrayToSelector( this.elmPngHeight,
-                                             [20, 30, 40, 50, 60, 70],
-                                             50 );
-          this.elmPngHeight.addEventListener("change", this.callbackToUpdatePngHeight);
-
-          elmDiv.appendChild(document.createTextNode("|"));
-          elmDiv.appendChild(document.createTextNode("nRows"));
-          this.elmPngRow = document.createElement("SELECT");
-          this.elmPngRow.parentGlyphTable = this;
-          elmDiv.appendChild(this.elmPngRow);
-          this.parentUi.expandArrayToSelector( this.elmPngRow,
-                                             [5, 10, 20],
-                                             10 );
-          this.elmPngRow.addEventListener("change", this.callbackToUpdatePngRow);
-
-          elmDiv.appendChild(document.createTextNode("|"));
-          elmDiv.appendChild(document.createTextNode("nColumns"));
-          this.elmPngColumn = document.createElement("SELECT");
-          this.elmPngColumn.parentGlyphTable = this;
-          elmDiv.appendChild(this.elmPngColumn);
-          this.parentUi.expandArrayToSelector( this.elmPngColumn,
-                                             [1, 2, 3, 4, 5],
-                                             2 );
-          this.elmPngColumn.addEventListener("change", this.callbackToUpdatePngColumn);
-        };
-
-        this.glyphTable = new GlyphTable();
-        this.glyphTable.parentUi = this;
-        this.glyphTable.elmTable = document.createElement("TABLE");
-        elmParent.appendChild(this.glyphTable.elmTable);
-        this.glyphTable.elmTable.setAttribute("border", "0");
-        this.glyphTable.elmTable.setAttribute("cellspacing", "0");
-
-        if (!noNavigator) {
-          this.glyphTable.addNavigator();
-        }
-        return this.glyphTable;
-      };
-      CurrentUi.prototype.showFoundResults = function(arr) {
-        if (this.addHexCodeToUcs) {
-          arr = DB_IDS.addHexCodePointToUcsArray(arr);
-        }
-
-        if (this.usePng) {
-          this.elmFoundResultsText.style.display = "none";
-          this.glyphTable.fillTableWithPng(arr);
-          this.glyphTable.elmTable.style.display = "block";
-        } else {
-          this.glyphTable.elmTable.style.display = "none";
-          this.elmFoundResultsText.innerHTML = arr.join(", ");
-          this.elmFoundResultsText.style.display = "block";
-        }
-      };
-      CurrentUi.prototype.loadFileByXHR = function(filePath, destName, msgElm, curBtn, nxtBtn) {
+      function loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn) {
         var err;
         var req;
         curBtn.disabled = true;
@@ -735,20 +198,22 @@
             msgElm.innerHTML = "Error in reading " + filePath + " by " + err.message;
           } else {
             nxtBtn.disabled = false;
-            window.currentUi[destName] = req.responseText;
-            msgElm.innerHTML = req.responseText.length.toString(10) + " bytes loaded";
+            setGlobalText(destName, req.responseText);
+            msgElm.innerHTML = destObj.length.toString(10) + " bytes loaded";
           }
         }
         curBtn.disabled = false;
         return err.code;
       }
-      CurrentUi.prototype.loadFileByFileAPI = function(filePath, destName, msgElm, curBtn, nxtBtn) {
+
+      function loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn) {
         var fileReader = new FileReader();
         var fileIsLoaded = false;
         curBtn.disabled = true;
         fileReader.onload = function(event) {
-          window.currentUi[destName] = event.target.result;
-          msgElm.innerHTML = event.target.result.length.toString(10) + " bytes loaded";
+          var loadedText = event.target.result;
+          setGlobalText(destName, loadedText);
+          msgElm.innerHTML = loadedText.length.toString(10) + " bytes loaded";
           curBtn.disabled = false;
           nxtBtn.disabled = false;
           fileIsLoaded = true;
@@ -757,103 +222,425 @@
         if (fileReader.readyState == 2 && !fileIsLoaded) {
           brokenFileApi = true;
           msgElm.innerHTML = "Error in reading " + filePath + " by File API, retry with XHR";
-          window.currentUi.loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
+          loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
         }
       }
-      CurrentUi.prototype.loadFile = function(filePath, destName, msgElm, curBtn, nxtBtn) {
+
+      function loadFile(filePath, destName, msgElm, curBtn, nxtBtn) {
         curBtn.disabled = true;
         if (window.File && window.FileReader && !brokenFileApi) {
-          window.currentUi.loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn);
+          loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn);
         } else {
-          window.currentUi.loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
+          loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn);
+        }
+        if (showDebug) {
+          msgElm.innerHTML = "<pre>" + getGlobalText(destName) + "</pre>";
         }
       }
-      CurrentUi.prototype.loadIdsFile = function() {
-        window.currentUi.loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
+
+      function loadIdsFile() {
+        loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
       }
-      CurrentUi.prototype.loadUnihanFile = function() {
-        window.currentUi.loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmStatusMsg, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
+
+      function loadUnihanFile() {
+        loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmStatusMsg, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
       }
-      CurrentUi.prototype.loadCJKUSRFile = function() {
-        window.currentUi.loadFile(document.CJKUSRFile.PathToCJKUSR.files[0], "isoCjkSrcText", elmStatusMsg, document.getElementById("ButtonToLoadCJKUSR"), document.getElementById("ButtonToParseCJKUSR"));
+
+      function loadCJKUSRFile() {
+        loadFile(document.CJKUSRFile.PathToCJKUSR.files[0], "CJKU_SR", elmStatusMsg, document.getElementById("ButtonToLoadCJKUSR"), document.getElementById("ButtonToParseCJKUSR"));
       }
-      CurrentUi.prototype.parseIdsText = function() {
+
+      function parseIdsText() {
         document.getElementById("ButtonToParseIds").disabled = true;
-        numIdsItems = DB_IDS.initUcs2IdsDBByTSV(window.currentUi.idsText);
-        elmStatusMsg.innerHTML = numIdsItems.toString(10) + " items parsed";
+        var ucsName, ucs, toks, i, j, k;
+        var idsItems = idsText.split("\n");
+        for ( i in idsItems ) {
+          toks = idsItems[i].split("\t");
+          ucsName = toks.shift();
+          ucs = toks.shift();
+          ucs2idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
+        }
+
+        hasUcs2IdsDB = true;
+        elmStatusMsg.innerHTML = idsItems.length.toString(10) + " items parsed";
         document.getElementById("ButtonToParseIds").disabled = false;
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
-      CurrentUi.prototype.parseUnihanText = function() {
+
+      function parseUnihanText() {
         document.getElementById("ButtonToParseUnihan").disabled = true;
-        var numUnihanItems = DB_IDS.Unihan.initByTSV(window.currentUi.unihanText);
-        delete unihanText;
-        elmStatusMsg.innerHTML =  numUnihanItems + " items parsed";
+        var i, j, l, toks, u, ustr, prop, val;
+        var unihanItems = unihanText.split("\n");
+        j = 0;
+        for ( i in unihanItems ) {
+          if ( unihanItems[i].slice(0,2) == "U+" ) {
+            toks = unihanItems[i].split("\t");
+            l = toks[0].length;
+            u = parseInt(toks[0].slice(2,l), 16);
+            if (u < 0x10000) {
+              ustr = String.fromCharCode(u);
+            } else if (u < 0xEFFFF) {
+              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
+            } else {
+              continue;
+            }
+            prop  = toks[1];
+            val   = toks[2];
+            if ( prop != "kTotalStrokes" ) {
+              continue;
+            }
+            if ( unihanDB[prop] == undefined ) {
+              unihanDB[prop] = new Array();
+            }
+            unihanDB[prop][ustr] = parseInt(val, 10);
+            j += 1;
+          }
+        }
+        hasUnihanDB = true;
+        unihanText = "";
+        elmStatusMsg.innerHTML = j + " items parsed";
         document.getElementById("ButtonToParseUnihan").disabled = false;
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
-      CurrentUi.prototype.parseCJKUSR = function() {
-        document.getElementById("ButtonToParseCJKUSR").disabled = true;
-        var numCjkSrcTxt = DB_IDS.CJKSR.initByIsoTxt(window.currentUi.isoCjkSrcText);
-        elmStatusMsg.innerHTML = numCjkSrcTxt.toString(10) + " items parsed";
-        document.getElementById("ButtonToParseCJKUSR").disabled = false;
-      }
-      CurrentUi.prototype.getSrcFilter = function() {
-        var srcFilter = [];
-        if (document.getElementById("ChkboxForSrcG").checked) { srcFilter.push("G"); };
-        if (document.getElementById("ChkboxForSrcT").checked) { srcFilter.push("T"); };
-        if (document.getElementById("ChkboxForSrcJ").checked) { srcFilter.push("J"); };
-        if (document.getElementById("ChkboxForSrcK").checked) { srcFilter.push("K"); };
-        if (document.getElementById("ChkboxForSrcV").checked) { srcFilter.push("V"); };
-        if (document.getElementById("ChkboxForSrcH").checked) { srcFilter.push("H"); };
-        if (document.getElementById("ChkboxForSrcU").checked) { srcFilter.push("U"); };
-        if (document.getElementById("ChkboxForSrcM").checked) { srcFilter.push("M"); };
-        return srcFilter;
-      }
-      CurrentUi.prototype.lookupComponents = function(queryStr) {
-        var res = DB_IDS.lookupByString(queryStr);
 
-        if (res.ignoredChars.length == res.components.length) {
-          this.elmStatusMsg.innerHTML = "no searcheable characters are found in the query \"" + queryStr + "\"<br>";
+      function parseCJKUSR() {
+        var lines = CJKU_SR.split("\n");
+        for (var i in lines) {
+          var toks = lines[i].split(";");
+          if (toks.length == 11) {
+            var u = parseInt(toks[0], 16);
+            if (u < 0x10000) {
+              var ustr = String.fromCharCode(u);
+            } else if (u < 0xEFFFF) {
+              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
+            }
+
+            CJKU_SR_DB[ustr] = new Array();
+            if (toks[2] != "") { CJKU_SR_DB[ustr]["G"] = toks[2]; }
+            if (toks[3] != "") { CJKU_SR_DB[ustr]["T"] = toks[3]; }
+            if (toks[4] != "") { CJKU_SR_DB[ustr]["J"] = toks[4]; }
+            if (toks[5] != "") { CJKU_SR_DB[ustr]["K"] = toks[5]; }
+            if (toks[6] != "") { CJKU_SR_DB[ustr]["V"] = toks[6]; }
+            if (toks[7] != "") { CJKU_SR_DB[ustr]["H"] = toks[7]; }
+            if (toks[8] != "") { CJKU_SR_DB[ustr]["KP"] = toks[8]; }
+            if (toks[9] != "") { CJKU_SR_DB[ustr]["U"] = toks[9]; }
+            if (toks[10] != "") { CJKU_SR_DB[ustr]["M"] = toks[10]; }
+          }
+        }
+        elmStatusMsg.innerHTML = lines.length.toString(10) + " items parsed";
+      }
+
+      function addHexCodePointToUcsArray(inArr) {
+        outArr = new Array();
+        for ( var i in inArr ) {
+          if ( !hasUnihanDB ) {
+            outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ")" );
+          } else if ( unihanDB["kTotalStrokes"] == undefined || inArr[i] == undefined || unihanDB["kTotalStrokes"][inArr[i]] == undefined ) {
+            outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ":XXX)" );
+          } else {
+            outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ":" + unihanDB["kTotalStrokes"][inArr[i]].toString(10) + ")" );
+          }
+        }
+        return outArr;
+      }
+
+      function fillTableWithPng(elmTable, inArr) {
+        // assume cells out of maxPngColumns x maxPngRows are already hidden
+        var i, r, x, y;
+        var ctxt, txt, cimg, img;
+        var pngDir = document.getElementById("PngDir").value;
+        for ( y = 0; y < maxPngRows; y += 1 ) {
+          r = elmTable.rows[y];
+          for ( x = 0; x < maxPngColumns; x += 1 ) {
+            i = ( x * maxPngRows ) + y;
+            ctxt = r.cells[x*2];
+            cimg = r.cells[(x*2) + 1];
+            txt = ctxt.childNodes[0];
+            img = cimg.childNodes[0];
+            if ( i < inArr.length ) {
+              var ustr = inArr[i].split("(");
+              var uhex = ucsArrToUcs4Codepoint(ustr[0]).toString(16).toUpperCase();
+              var subDir = uhex.slice(0,-2);
+              var txt, img;
+
+              txt.data = inArr[i];
+
+              img.height = pngHeight;
+              img.align = "middle";
+              img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
+
+              ctxt.style.display = "";
+              cimg.style.display = "";
+
+              if ( x == 0 ) {
+                ctxt.style.borderLeft = "1px solid black";
+              }
+              cimg.style.borderRight = "1px solid black";
+
+              if ( y == 0 ) {
+                ctxt.style.borderTop = "1px solid black";
+                cimg.style.borderTop = "1px solid black";
+              }
+              ctxt.style.borderBottom = "1px solid black";
+              cimg.style.borderBottom = "1px solid black";
+
+
+            } else {
+              ctxt.style.display = "none";
+              cimg.style.display = "none";
+            }
+          }
+        }
+      }
+
+      function showFoundResult(arr) {
+        if (document.getElementById("ChkboxForHexUcs").checked) {
+          arr = addHexCodePointToUcsArray(arr);
+        }
+
+        if (usePng) {
+          elmFoundIdsBody.style.display = "none";
+          fillTableWithPng(elmFoundIdsTable, arr);
+          elmFoundIdsTable.style.display = "block";
+        } else {
+          elmFoundIdsTable.style.display = "none";
+          elmFoundIdsBody.innerHTML = arr.join(", ");
+          elmFoundIdsBody.style.display = "block";
+        }
+      }
+
+      function expandTableMatrix(elmTable, rows, columns) {
+        var c, r, rs, x, y;
+        if ( elmTable.rows.length < rows ) {
+          for ( y = elmTable.rows.length; y < rows; y += 1 ) {
+            elmTable.insertRow(-1);
+          }
+        }
+        rs = elmTable.rows;
+        if ( rs[rs.length - 1].cells.length < (columns*2) ) {
+          for ( y = 0; y < elmTable.rows.length; y += 1 ) {
+            r = elmTable.rows[y];
+            for ( x = r.cells.length; x < (columns*2); x += 1 ) {
+              r.insertCell(-1);
+              r.lastChild.appendChild(document.createTextNode(""));
+              r.insertCell(-1);
+              r.lastChild.appendChild(document.createElement("img"));
+            }
+          }
+        }
+      }
+
+      function updateTableMatrix(elmTable, rows, columns) {
+        var c, r, x, y;
+        expandTableMatrix(elmTable, rows, columns);
+
+        for ( y = 0; y < elmTable.rows.length; y += 1 ) {
+          r = elmTable.rows[y];
+          for ( x = 0; x < r.cells.length; x += 2 ) {
+            if (y < rows && x < (columns*2) ) {
+              r.cells[x].style.display = "";
+              r.cells[x+1].style.display = "";
+            } else {
+              r.cells[x].style.display = "none";
+              r.cells[x].lastChild.data = "";
+              r.cells[x+1].style.display = "none";
+              r.cells[x+1].lastChild.src = "";
+            }
+          }
+        }
+      }
+
+      function sortFoundCharsByTotalStrokes() {
+        if (!hasUnihanDB) {
           return;
+        }
+        if (foundChars == null) {
+          return;
+        }
+        foundChars = foundChars.sort(function(a, b) {
+          var tsa = unihanDB["kTotalStrokes"][a];
+          var tsb = unihanDB["kTotalStrokes"][b];
+          if (tsa != undefined && tsb != undefined) {
+            return (tsa - tsb);
+          } else if (tsa == undefined && tsb == undefined) {
+            return (a - b);
+          } else if (tsa != undefined) {
+            return -1;
+          } else {
+            return 1;
+          }
+        });
+      }
+
+      function sortFoundCharsByUCS() {
+        if (foundChars == null) {
+          return;
+        }
+        var foundCharsUCS = new Array();
+        for ( var i = foundChars.length; i > 0; ) {
+          i -= 1;
+          foundCharsUCS[foundChars[i]] = ucsArrToUcs4Codepoint(foundChars[i]);
+        }
+        foundChars = foundChars.sort(function(a, b) {
+          return (foundCharsUCS[a] - foundCharsUCS[b]);
+        });
+      }
+
+      function showFoundCharsPartial() {
+        var arrToShow = foundChars.slice(maxPngRows * maxPngColumns * curPage, maxPngRows * maxPngColumns * (curPage + 1));
+        showFoundResult(arrToShow);
+      }
+
+      function rollPageNavigators(attr) {
+        document.getElementById("FoundIdsNavigatorHeader").style.display = attr;
+        document.getElementById("FoundIdsNavigatorFooter").style.display = attr;
+      }
+
+      function updateAPageSelector(pageSelector, maxPages) {
+        var curNodes = pageSelector.childNodes;
+        if ( curNodes.length > maxPages ) {
+          for ( var i = curNodes.length; i > maxPages; ) {
+            i -= 1;
+            pageSelector.removeChild(curNodes[i]);
+          }
+        } else if ( curNodes.length < maxPages ) {
+          for ( var i = curNodes.length; i < maxPages; i += 1 ) {
+            pageSelector.innerHTML += "<option value=\"" + i.toString(10) + "\">" + i.toString(10);
+          }
+        }
+      }
+
+      function updatePageSelectors(maxPages) {
+        updateAPageSelector(document.getElementById("PageSelectorHeader"), maxPages);
+        updateAPageSelector(document.getElementById("PageSelectorFooter"), maxPages);
+      }
+
+      function showFoundChars() {
+        var err;
+        if (foundChars == null) {
+          return;
+        }
+        var maxPngPerPage = maxPngRows * maxPngColumns;
+        var arrToShow;
+        var foundIdsHeader = document.getElementById("FoundIdsHeader");
+        if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
+          updatePageSelectors(Math.ceil(foundChars.length / maxPngPerPage));
+          rollPageNavigators("block");
+          showFoundCharsPartial();
+        } else {
+          rollPageNavigators("none");
+          arrToShow = foundChars.slice(0);
+          showFoundResult(arrToShow);
+        }
+      }
+
+      function lookupComponents() {
+        var components = utf16Str2UcsArr(document.CheckComponent.Components.value);
+        var lookupDB = new Array();
+        var candidates = new Array();
+        var results = new Array();
+        var ignoredChars = new Array();
+        var i, j, c, d, u;
+
+        var useSrcFilter = new Array();
+
+        if (CJKU_SR.length) {
+          if (document.getElementById("ChkboxForSrcG").checked) { useSrcFilter.push("G"); };
+          if (document.getElementById("ChkboxForSrcT").checked) { useSrcFilter.push("T"); };
+          if (document.getElementById("ChkboxForSrcJ").checked) { useSrcFilter.push("J"); };
+          if (document.getElementById("ChkboxForSrcK").checked) { useSrcFilter.push("K"); };
+          if (document.getElementById("ChkboxForSrcV").checked) { useSrcFilter.push("V"); };
+          if (document.getElementById("ChkboxForSrcH").checked) { useSrcFilter.push("H"); };
+          if (document.getElementById("ChkboxForSrcU").checked) { useSrcFilter.push("U"); };
+          if (document.getElementById("ChkboxForSrcM").checked) { useSrcFilter.push("M"); };
+        }
+
+        for ( i in components ) {
+          c = components[i];
+          d = ucs2idsDB[c];
+          if ( d == undefined || d == null ) {
+            ignoredChars.push(c);
+          } else if ( lookupDB[c] == undefined ) {
+            lookupDB[c] = 1;
+          } else {
+            lookupDB[c] += 1;
+          }
+        }
+
+        for ( u in ucs2idsDB ) {
+          candidates.push(u);
+        }
+
+        for ( c in lookupDB ) {
+          for ( i in candidates ) {
+            u = candidates[i];
+            if ( ucs2idsDB[u].countAComponent(c) >= lookupDB[c] ) {
+              results.push(u);
+            }
+          }
+          candidates = results;
+          results = new Array();
+        }
+
+        if (useSrcFilter.length > 0) {
+          candidates = candidates.slice(0);
+          results = new Array();
+
+          for ( i in candidates ) {
+            u = candidates[i];
+            var cjku_sr_db = CJKU_SR_DB[u];
+            if (cjku_sr_db != undefined) {
+              for ( j in useSrcFilter ) {
+                d = useSrcFilter[j];
+                if (cjku_sr_db[d] != undefined) {
+                  results.push(u);
+                  break;
+                }
+              }
+            }
+          }
+          candidates = results;
         }
 
         elmStatusMsg.innerHTML = "";
-        if (res.ignoredChars.length > 0) {
-          elmStatusMsg.innerHTML += "\"" + res.ignoredChars.join("\", \"") + "\" are ignored in search<br>";
+        if (ignoredChars.length > 0) {
+          elmStatusMsg.innerHTML += "\"" + ignoredChars.join("\", \"") + "\" are ignored in search<br>";
+        }
+        elmStatusMsg.innerHTML += candidates.length.toString(10) + " characters are found";
+
+        foundChars = candidates.slice(0);
+        curPage = 0;
+
+        if (sortTotalStroke) {
+          sortFoundCharsByTotalStrokes();
         }
 
-        if (DB_IDS.CJKSR.isLoaded) {
-          res.foundChars = DB_IDS.CJKSR.applyFilterToChars(res.foundChars, getSrcFilter());
-        }
+        showFoundChars();
+      }
 
-        elmStatusMsg.innerHTML += res.foundChars.length.toString(10) + " characters are found";
-        if (this.glyphTable && this.glyphTable.navigator) {
-          this.glyphTable.navigator.curPage = 0;
+      function decomposeSelectedComponents(wholeString, selectionStart, selectionEnd) {
+        var c, d, u, i, j, k, l;
+        for ( j = selectionEnd - 1; selectionStart <= j ; j -= 1 ) {
+          l = wholeString.length;
+          k = j + 1;
+          c = wholeString.charCodeAt(j);
+          if (0xD800 <= c && c <= 0xDBFF && (j+1) < l) {
+            d = wholeString.charCodeAt(j+1);
+            if (0xDC00 <= d && d <= 0xDFFF) {
+              k = j + 2;
+            }
+          }
+          u = wholeString.substring(j,k);
+          var curHead = wholeString.substring(0,j);
+          var curTail = wholeString.substring(k,l);
+          if (ucs2idsDB[u] != undefined && ucs2idsDB[u].idss.length > 0) {
+            wholeString = curHead + "(" + ucs2idsDB[u].idss.join("|") + ")" + curTail;
+          }
         }
-        if (this.sortTotalStroke) {
-          this.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(res.foundChars);
-        } else {
-          this.foundChars = DB_IDS.Unihan.sortCharsByUCS(res.foundChars);
-        }
-        this.showFoundResults(this.foundChars);
+        return wholeString;
       }
-      CurrentUi.prototype.callbackToLookupComponents = function() {
-        // this function is called as callback
-        window.currentUi.lookupComponents( document.getElementById("txtQuery").value );
-      }
-      CurrentUi.prototype.callbackToUpdateAddUcsHex = function() {
-        // this function is called as callback
-        var currentUi = window.currentUi;
-        currentUi.addHexCodeToUcs = document.getElementById("ChkboxForHexUcs").checked;
-        currentUi.showFoundResults(currentUi.foundChars);
-      }
-      CurrentUi.prototype.decomposeSelectedComponents = function(wholeString, selectionStart, selectionEnd) {
-        var curHead = wholeString.substring(0,selectionStart);
-        var curTail = wholeString.substring(selectionEnd,wholeString.length);
-        return curHead + DB_IDS.decomposeUtf16Str(wholeString.substring(selectionStart, selectionEnd - selectionStart + 1)).join("") + curTail; 
-      }
-      CurrentUi.prototype.wrapDecomposeSelectedComponents = function(formElement) {
+
+      function wrapDecomposeSelectedComponents(formElement) {
         formElement.focus();
 
         if (formElement.setSelectionRange) {
@@ -876,182 +663,121 @@
           elmStatusMsg.innerHTML = "decomposition is not available on this system";
         }
       }
-      CurrentUi.prototype.callbackToDecomposeSelectedComponents = function() {
-        // this function is called as callback
-      };
 
-      // ----- utility to add INPUT elements
-      CurrentUi.prototype.addElmCheckBoxAndLabel = function(elmDiv, labelText) {
-        var elmCheckBox = document.createElement("INPUT");
-        elmCheckBox.setAttribute("type", "checkbox");
-        var elmLabel = document.createTextNode(labelText);
-        elmDiv.appendChild(elmCheckBox);
-        elmDiv.appendChild(elmLabel);
-        return [elmCheckBox, elmLabel];
-      }
-
-      // ----- sort by UCS codepoint or Total Strokes ------
-      CurrentUi.prototype.callbackToUpdateSort = function() {
-        // this function is called as callback from checkbox element
-        var curUi = this.parentUi;
-        if (this.checked) {
-          curUi.sortTotalStroke = true;
-          if (curUi.foundChars != null && curUi.foundChars.length > 0) {
-            curUi.foundChars = DB_IDS.Unihan.sortCharsByTotalStrokes(curUi.foundChars);
+      function updateSort() {
+        if (document.getElementById("ChkboxForTotalStrokeSort").checked) {
+          sortTotalStroke = true;
+          if (foundChars != null) {
+            sortFoundCharsByTotalStrokes();
           }
         } else {
-          curUi.sortTotalStroke = false;
-          if (curUi.foundChars != null && curUi.foundChars.length > 0) {
-            curUi.foundChars = DB_IDS.Unihan.sortCharsByUCS(curUi.foundChars);
+          sortTotalStroke = false;
+          if (foundChars != null) {
+            sortFoundCharsByUCS();
           }
         }
-        if (curUi.usePng && curUi.foundChars != null && curUi.foundChars.length > (curUi.maxPngRows * curUi.maxPngColumns)) {
-          curUi.rollPageNavigators("block");
-          curUi.showFoundCharsPartial();
+        if (usePng && foundChars != null && foundChars.length > (maxPngRows * maxPngColumns)) {
+          rollPageNavigators("block");
+          showFoundCharsPartial();
         } else {
-          curUi.rollPageNavigators("none");
-          curUi.showFoundResult(curUi.foundChars.slice(0));
+          rollPageNavigators("none");
+          showFoundResult(foundChars.slice(0));
         }
-      };
-      CurrentUi.prototype.addControlToSort = function(elmDiv, labelText) {
-        if (!labelText) {
-          labelText = "sort by total stroke";
-        }
-        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
-        this.ctrls.sort = {};
-        this.ctrls.sort.checkBox = cbal[0];
-        this.ctrls.sort.checkBox.parentUi = this;
-        this.ctrls.sort.label = cbal[1];
+      }
 
-        this.ctrls.sort.checkBox.addEventListener("change", this.callbackToUpdateSort);
-        return true;
-      };
-      CurrentUi.prototype.callbackToRollOptionControls = function() {
-        // this function is called as callback from checkbox element
-        if (this.checked) {
-          this.parentUi.elmOptionControls.style.display = "block";
+      function updateDebug(obj) {
+        showDebug = obj.checked;
+      }
+
+      function rollOptionForms(obj) {
+        if (obj.checked) {
+          elmOptionForms.style.display = "block";
         } else {
-          this.parentUi.elmOptionControls.style.display = "none";
+          elmOptionForms.style.display = "none";
         }
       }
-      CurrentUi.prototype.addControlToRollOptions = function(elmDiv, labelText) {
-        if (!labelText) {
-          labelText = "show options";
-        }
-        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
-        this.ctrls.options = {};
-        this.ctrls.options.checkBox = cbal[0];
-        this.ctrls.options.checkBox.parentUi = this;
-        this.ctrls.options.label = cbal[1];
 
-        this.ctrls.options.checkBox.addEventListener("change", this.callbackToRollOptionControls);
-        return true;
-      }
-      CurrentUi.prototype.callbackToRollSideBar = function() {
-        // this function is called as callback from checkbox element
-        var sideBar = this.parentUi.sideBar;
-        if (this.checked) {
-          sideBar.style.width = sideBarWidthPercent.toString(10) + "%";
-          sideBar.style.display = "block";
+      function rollSideBar(obj) {
+        if (obj.checked) {
+          elmSideBar.style.width = sideBarWidthPercent.toString(10) + "%";
+          elmSideBar.style.display = "block";
         } else {
-          sideBar.style.width = "0%";
-          sideBar.style.display = "none";
+          elmSideBar.style.width = "0%";
+          elmSideBar.style.display = "none";
         }
       }
-      CurrentUi.prototype.addControlToRollSideBar = function(elmDiv, labelText) {
-        if (!labelText) {
-          labelText = "show SideBar";
-        }
-        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
-        this.ctrls.sideBar = {};
-        this.ctrls.sideBar.checkBox = cbal[0];
-        this.ctrls.sideBar.checkBox.parentUi = this;
-        this.ctrls.sideBar.label = cbal[1];
 
-        this.ctrls.sideBar.checkBox.addEventListener("change", this.callbackToRollSideBar);
-        return true;
+      function movePageByDelta(delta) {
+        var i = curPage + delta;
+        var psH = document.getElementById("PageSelectorHeader");
+        var psF = document.getElementById("PageSelectorFooter");
+        try {
+          psH.childNodes[i].selected = true;
+          psF.childNodes[i].selected = true;
+        }
+        catch (err) {
+          // no need if we don't care inconsistent current page case
+          // psH.childNodes[curPage].selected = true;
+          // psF.childNodes[curPage].selected = true;
+          return; // invalid page number (no prev or no next)
+        }
+        curPage = i;
+        showFoundCharsPartial();
       }
 
-      // ----- font size -----
-      CurrentUi.prototype.callbackToUpdateFontSize = function() {
-        // this function is called as callback from selector element
+      function movePageBySelector() {
+        curPage = parseInt(this.value, 10);
+        var psH = document.getElementById("PageSelectorHeader");
+        var psF = document.getElementById("PageSelectorFooter");
+        psH.childNodes[curPage].selected = true;
+        psF.childNodes[curPage].selected = true;
+        showFoundCharsPartial();
+      }
+
+      function updateFontSize() {
         var fontSize = parseInt(this.value, 10);
-        for (var i = 0; i < this.elmsToUpdate; i += 1) {
-          if (this.elmsToUpdate[i] && this.elmsToUpdate[i].style) {
-            this.elmsToUpdate[i].style.fontSize = fontSize;
-          }
-        }
+        elmAtomicIds.style.fontSize = fontSize;
+        elmFoundIdsBody.style.fontSize = fontSize;
+        elmFoundIdsTable.style.fontSize = fontSize;
       }
-      CurrentUi.prototype.addControlToUpdateFontSize = function(elmDiv, labelText, elmsToUpdate) {
-        this.ctrls.fontSize = {};
-        this.ctrls.fontSize.label = document.createTextNode(labelText);
-        elmDiv.appendChild(this.ctrls.fontSize.label);
-        this.ctrls.fontSize.selector = document.createElement("SELECT");
-        elmDiv.appendChild(this.ctrls.fontSize.selector);
-        this.expandArrayToSelector(this.ctrls.fontSize.selector, [10, 12, 14, 16, 18, 20, 24, 36, 48, 60, 72], 12);
-        this.ctrls.fontSize.selector.parentUi = this;
-        this.ctrls.fontSize.selector.elmsToUpdate = elmsToUpdate;
-        if (!labelText) {
-          labelText = "FontSize";
-        }
 
-        this.ctrls.fontSize.selector.addEventListener("change", this.callbackToUpdateFontSize);
-        return true;
-        
-      }
-      CurrentUi.prototype.callbackToRollAtomicIds = function() {
-        // this function is called as callback from checkbox element
-        if (!this.elmToUpdate) {
-          return;
-        } else
-        if (this.checked) {
-          if (DB_IDS.hasUcs2IdsDB() && this.elmToUpdate.innerHTML.length == 0) {
+      function rollAtomicIds(obj) {
+        if (obj.checked) {
+          if (hasUcs2IdsDB && elmAtomicIds.innerHTML.length == 0) {
             var ucs;
             var atomicIds = new Array();
-            for ( ucs in DB_IDS.ucs2idsDB ) {
-              if ( 1 == DB_IDS.ucs2idsDB[ucs].idsArrays.length && ucs == DB_IDS.ucs2idsDB[ucs].idsArrays[0] ) {
+            for ( ucs in ucs2idsDB ) {
+              if ( 1 == ucs2idsDB[ucs].idsArrays.length && ucs == ucs2idsDB[ucs].idsArrays[0] ) {
                 atomicIds.push(ucs);
               }
             }
-            this.elmToUpdate.innerHTML = atomicIds.join(", ");
+            elmAtomicIds.innerHTML = atomicIds.join(", ");
           }
-          this.elmToUpdate.style.display = "block";
+          elmAtomicIds.style.display = "block";
         } else {
-          this.elmToUpdate.style.display = "none";
+          elmAtomicIds.style.display = "none";
         }
       }
-      CurrentUi.prototype.addControlToRollAtomicIds = function(elmDiv, labelText, elmToUpdate) {
-        if (!labelText) {
-          labelText = "show atomic IDS";
-        }
-        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
-        this.ctrls.rollAtomicIds = {};
-        this.ctrls.rollAtomicIds.checkBox = cbal[0];
-        this.ctrls.rollAtomicIds.checkBox.parentUi = this;
-        this.ctrls.rollAtomicIds.checkBox.elmToUpdate = elmToUpdate;
-        this.ctrls.rollAtomicIds.label = cbal[1];
 
-        this.ctrls.rollAtomicIds.checkBox.addEventListener("change", this.callbackToRollAtomicIds);
-        return true;
+      function updateUsePng(obj) {
+        usePng = obj.checked;
       }
-      CurrentUi.prototype.callbackToUpdateUsePng = function() {
-        // this function is called as callback from checkbox element
-        this.parentUi.usePng = this.checked;
-      }
-      CurrentUi.prototype.addControlToUsePng = function(elmDiv, labelText) {
-        if (!labelText) {
-          labelText = "show PNG";
-        }
-        var cbal = this.addElmCheckBoxAndLabel(elmDiv, labelText);
-        this.ctrls.usePng = {};
-        this.ctrls.usePng.checkBox = cbal[0];
-        this.ctrls.usePng.checkBox.parentUi = this;
-        this.ctrls.usePng.label = cbal[1];
 
-        this.ctrls.usePng.checkBox.addEventListener("change", this.callbackToUpdateUsePng);
-        return true;
+      function updatePngHeight() {
+        pngHeight = parseInt(this.value, 10);
       }
-      CurrentUi.prototype.checkAllSources = function() {
+
+      function updatePngRow() {
+        maxPngRows = parseInt(this.value, 10);
+        updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
+      }
+
+      function updatePngColumn() {
+        maxPngColumns = parseInt(this.value, 10);
+        updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
+      }
+
+      function checkAllSources() {
         var elmBtnToParseCJKUSR = document.getElementById("ButtonToParseCJKUSR");
         for ( var elm = elmBtnToParseCJKUSR; elm.nextElementSibling != null; elm = elm.nextElementSibling ) {
           if (elm.id.match(/^ChkboxForSrc/)) {
@@ -1059,7 +785,8 @@
           }
         }
       }
-      CurrentUi.prototype.uncheckAllSources = function() {
+
+      function uncheckAllSources() {
         var elmBtnToParseCJKUSR = document.getElementById("ButtonToParseCJKUSR");
         for ( var elm = elmBtnToParseCJKUSR; elm.nextElementSibling != null; elm = elm.nextElementSibling ) {
           if (elm.id.match(/^ChkboxForSrc/)) {
@@ -1067,7 +794,6 @@
           }
         }
       }
-      window.currentUi = new CurrentUi();
 
     -->
     </script>
@@ -1083,22 +809,66 @@
         </div>
       </div>
       <div id="MainContainer">
-        <div id="Controls"></div>
+        <form id="Setting">
+          <input type="checkbox" id="ChkboxForDebug"   onclick="updateDebug(this)">debug
+          <input type="checkbox" id="ChkboxForOptions" onclick="rollOptionForms(this)">show options
+          <input type="checkbox" id="ChkboxForSideBar" onclick="rollSideBar(this)">show sideBar
+        </form>
+        <div id="OptionForms">
+          <select id="FontSize">
+            <option value="10">10
+            <option value="12" selected>12
+            <option value="14">14
+            <option value="16">16
+            <option value="18">18
+            <option value="20">20
+            <option value="24">24
+            <option value="36">36
+            <option value="48">48
+            <option value="60">60
+            <option value="72">72
+          </select>
+          <br>
+          <input type="text" id="PngDir"> dirname for PNG files
+          <select id="PngHeight">
+            <option value="20">20
+            <option value="30">30
+            <option value="40">40
+            <option value="50" selected>50
+            <option value="60">60
+            <option value="70">70
+          </select>
+          height of picture
+          <select id="PngRow">
+            <option value="5">5
+            <option value="10" selected>10
+            <option value="20">20
+            <option value="30">30
+          </select> nRows
+          <select id="PngColumn">
+            <option value="1">1
+            <option value="2" selected>2
+            <option value="3">3
+            <option value="4">4
+            <option value="5">5
+          </select> nColumns
+          <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
+        </div>
         <form name="IdsFile" onsubmit="return false;">
           <input type="file" name="PathToIds">
-          <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="window.currentUi.loadIdsFile()">
-          <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="window.currentUi.parseIdsText()" disabled>
+          <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="loadIdsFile()">
+          <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
         </form>
         <form name="UnihanFile" onsubmit="return false;">
           <input type="file" name="PathToUnihan">
-          <input type="button" id="ButtonToLoadUnihan"  value="load Unihan.txt"  onclick="window.currentUi.loadUnihanFile()">
-          <input type="button" id="ButtonToParseUnihan" value="parse Unihan.txt" onclick="window.currentUi.parseUnihanText()" disabled>
+          <input type="button" id="ButtonToLoadUnihan"  value="load Unihan.txt"  onclick="loadUnihanFile()">
+          <input type="button" id="ButtonToParseUnihan" value="parse Unihan.txt" onclick="parseUnihanText()" disabled>
           <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
         </form>
         <form name="CJKUSRFile" onsubmit="return false;">
           <input type="file" name="PathToCJKUSR">
-          <input type="button" id="ButtonToLoadCJKUSR"  value="load CJKU_SR"  onclick="window.currentUi.loadCJKUSRFile()">
-          <input type="button" id="ButtonToParseCJKUSR" value="parse CJKU_SR" onclick="window.currentUi.parseCJKUSR()" disabled>
+          <input type="button" id="ButtonToLoadCJKUSR"  value="load CJKU_SR"  onclick="loadCJKUSRFile()">
+          <input type="button" id="ButtonToParseCJKUSR" value="parse CJKU_SR" onclick="parseCJKUSR()" disabled>
           <input type="checkbox" id="ChkboxForSrcG" checked>G
           <input type="checkbox" id="ChkboxForSrcT" checked>T
           <input type="checkbox" id="ChkboxForSrcJ" checked>J
@@ -1111,51 +881,49 @@
           <input type="button" id="ButtonToUncheckAll" value="Exclude All" onclick="uncheckAllSources()">
         </form>
         <form name="CheckComponent" onsubmit="return false;">
-          <input id="txtQuery" type="text" name="Components">
-          <input id="btnQuery" type="button" value="lookup">
-          <input id="btnDecompose" type="button" value="decompose selected chars">
+          <input type="text" name="Components">
+          <input type="button" value="lookup" onclick="lookupComponents()">
+          <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
           <br>
-          <input type="checkbox" id="ChkboxForHexUcs">show UCS codepoint
+          <input type="checkbox" id="ChkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
           <br>
         </form>
-        <div id="StatusMsg"></div>
-        <div id="FoundResults"></div>
+        <div id="StatusMsg">
+        </div>
+        <div id="FoundIds">
+          <div id="FoundIdsNavigatorHeader">
+            <input type="button" value="prev" onclick="movePageByDelta(-1)">
+            <select id="PageSelectorHeader"></select>
+            <input type="button" value="next" onclick="movePageByDelta( 1)">
+          </div>
+          <div id="FoundIdsBody"></div>
+          <div id="FoundIdsTableWrap">
+            <table id="FoundIdsTable" border="0" cellspacing="0"></table>
+          </div>
+          <div id="FoundIdsNavigatorFooter">
+            <input type="button" value="prev" onclick="movePageByDelta(-1)">
+            <select id="PageSelectorFooter"></select>
+            <input type="button" value="next" onclick="movePageByDelta( 1)">
+          </div>
+        </div>
       </div>
-      <div id="Footer"></div>
+      <div id="Footer">
+      </div>
     </div>
     <script>
-      window.currentUi = new CurrentUi();
-      var currentUi = window.currentUi;
-
-      // -- setup control panels
-      currentUi.elmDivFoundResults = document.getElementById("FoundResults");
-      currentUi.elmFoundResultsText = document.createElement("DIV");
-      currentUi.elmDivFoundResults.appendChild(currentUi.elmFoundResultsText);
-      currentUi.addGlyphTable(currentUi.elmDivFoundResults);
-
-      var elmControls = document.getElementById("Controls");
-      currentUi.addControlToRollOptions(elmControls, "show Options");
-      currentUi.addControlToRollSideBar(elmControls, "show SideBar");
-      currentUi.addControlToSort(elmControls, "sort by Total Strokes");
-
-      currentUi.elmOptionControls = document.createElement("DIV");
-      currentUi.elmOptionControls.style.display = "none";
-      elmControls.appendChild(currentUi.elmOptionControls);
-
-      currentUi.addControlToUpdateFontSize(currentUi.elmOptionControls, "FontSize", [currentUi.elmFoundResultsText]);
-      currentUi.addControlToUsePng(currentUi.elmOptionControls);
-      currentUi.glyphTable.addControl(currentUi.elmOptionControls);
-
-      // -- setup elementary buttons
-      document.getElementById("btnQuery").addEventListener("click", currentUi.callbackToLookupComponents);
-      document.getElementById("ChkboxForHexUcs").addEventListener("click", currentUi.callbackToUpdateAddUcsHex);
-      document.getElementById("btnDecompose").addEventListener("click", currentUi.callbackToDecomposeSelectedComponents);
-
+      document.getElementById("PageSelectorHeader").addEventListener("change", movePageBySelector);
+      document.getElementById("PageSelectorFooter").addEventListener("change", movePageBySelector);
+      document.getElementById("FontSize").addEventListener("change", updateFontSize);
+      document.getElementById("PngHeight").addEventListener("change", updatePngHeight);
+      document.getElementById("PngRow").addEventListener("change", updatePngRow);
+      document.getElementById("PngColumn").addEventListener("change", updatePngColumn);
       elmSideBar = document.getElementById("SideBar");
       elmAtomicIds = document.getElementById("AtomicIds");
+      elmOptionForms = document.getElementById("OptionForms");
       elmStatusMsg = document.getElementById("StatusMsg");
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
+      updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
     </script>
   </body>
 </html>
