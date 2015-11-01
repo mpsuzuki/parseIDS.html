@@ -160,15 +160,18 @@
 
       var attrDB = new Array();
       var hasAttrDB = false;
-      var attrJsonText = new String();
+      var attrJsonTexts = new Array();
 
-      function setGlobalText(destName, str) {
+      function setGlobalText(destName, obj) {
         switch (destName) {
         case "idsText":
-          idsText = str;
+          idsText = obj;
           break;
         case "attrJsonText":
-          attrJsonText = str;
+          attrJsonTexts.push(obj);
+          break;
+        case "attrJsonTexts":
+          attrJsonTexts = attrJsonTexts.concat(obj);
           break;
         default:
           break;
@@ -180,7 +183,9 @@
         case "idsText":
           return idsText;
         case "attrJsonText":
-          return attrJsonText;
+          return attrJsonText.shift();
+        case "attrJsonTexts":
+          return attrJsonTexts;
         default:
           return null;
         }
@@ -189,7 +194,9 @@
       function loadFileByXHR(filePath, destName, msgElm, curBtn, nxtBtn) {
         var err;
         var req;
-        curBtn.disabled = true;
+        if (curBtn != null) {
+          curBtn.disabled = true;
+        }
         if (window.ActiveXObject) {
           req = new ActiveXObject('Microsoft.XMLHTTP');
         } else {
@@ -203,25 +210,35 @@
           if (err.code) {
             msgElm.innerHTML = "Error in reading " + filePath + " by " + err.message;
           } else {
-            nxtBtn.disabled = false;
+            if (nxtBtn != null) {
+              nxtBtn.disabled = false;
+            }
             setGlobalText(destName, req.responseText);
             msgElm.innerHTML = destObj.length.toString(10) + " bytes loaded";
           }
         }
-        curBtn.disabled = false;
+        if (curBtn != null) {
+          curBtn.disabled = false;
+        }
         return err.code;
       }
 
       function loadFileByFileAPI(filePath, destName, msgElm, curBtn, nxtBtn) {
         var fileReader = new FileReader();
         var fileIsLoaded = false;
-        curBtn.disabled = true;
+        if (curBtn != null) {
+          curBtn.disabled = true;
+        }
         fileReader.onload = function(event) {
           var loadedText = event.target.result;
           setGlobalText(destName, loadedText);
           msgElm.innerHTML = loadedText.length.toString(10) + " bytes loaded";
-          curBtn.disabled = false;
-          nxtBtn.disabled = false;
+          if (curBtn != null) {
+            curBtn.disabled = false;
+          }
+          if (nxtBtn != null) {
+            nxtBtn.disabled = false;
+          }
           fileIsLoaded = true;
         }
         fileReader.readAsText(filePath, "utf-8");
@@ -249,7 +266,14 @@
       }
 
       function loadAttrJsonFile() {
-        loadFile(document.AttrJsonFile.PathToAttrJson.files[0], "attrJsonText", elmStatusMsg, document.getElementById("ButtonToLoadAttrJson"), document.getElementById("ButtonToParseAttrJson"));
+        var attrJsonFiles = document.AttrJsonFile.PathToAttrJson.files;
+        document.getElementById("ButtonToLoadAttrJson").disabled = true;
+        document.getElementById("ButtonToParseAttrJson").disabled = true;
+        for (var i in attrJsonFiles) {
+          loadFile(attrJsonFiles[i], "attrJsonText", elmStatusMsg, document.getElementById("ButtonToLoadAttrJson"), document.getElementById("ButtonToParseAttrJson"));
+        }
+        document.getElementById("ButtonToLoadAttrJson").disabled = false;
+        document.getElementById("ButtonToParseAttrJson").disabled = false;
       }
 
       function parseIdsText() {
@@ -271,26 +295,28 @@
 
       function parseAttrJsonText() {
         document.getElementById("ButtonToParseAttrJson").disabled = true;
-        var hs = eval( "(" + attrJsonText + ")" );
-        var reUcs = /^U\+[0-9A-F]+$/;
-        var reCJKF = /^CJKF[0-9]+$/;
-        var reNum = /^[0-9]+$/;
-        for ( k in hs ) {
-          var nk = null;
-          if (k.match(reUcs)) {
-            var ucs4 = parseInt(k, 16);
-            nk = ucs4ToUtf16Str(ucs4);
-          }
-          else if (k.match(reNum)) {
-            var ucs4 = 0x100000 + parseInt(k, 16);
-            nk = ucs4ToUtf16Str(ucs4);
-          }
-          else if (k.match(reCJKF)) {
-            var ucs4 = 0x100000 + parseInt(k.slice(4), 16);
-            nk = ucs4ToUtf16Str(ucs4);
-          }
-          if ( nk != null ) {
-            attrDB[nk] = hs[k];
+        for ( var l in attrJsonTexts ) {
+          var hs = eval( "(" + attrJsonTexts[l] + ")" );
+          var reUcs = /^U\+[0-9A-F]+$/;
+          var reCJKF = /^CJKF[0-9]+$/;
+          var reNum = /^[0-9]+$/;
+          for ( k in hs ) {
+            var nk = null;
+            if (k.match(reUcs)) {
+              var ucs4 = parseInt(k, 16);
+              nk = ucs4ToUtf16Str(ucs4);
+            }
+            else if (k.match(reNum)) {
+              var ucs4 = 0x100000 + parseInt(k, 16);
+              nk = ucs4ToUtf16Str(ucs4);
+            }
+            else if (k.match(reCJKF)) {
+              var ucs4 = 0x100000 + parseInt(k.slice(4), 16);
+              nk = ucs4ToUtf16Str(ucs4);
+            }
+            if ( nk != null ) {
+              attrDB[nk] = hs[k];
+            }
           }
         }
         elmStatusMsg.innerHTML = Object.keys(attrDB).length + " items parsed";
