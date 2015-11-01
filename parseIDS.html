@@ -67,6 +67,19 @@
       var sortTotalStroke = false;
       var foundChars = null;
 
+      function ucs4ToUtf16Str(ucs4) {
+        var r = new String();
+        if (ucs4 < 0x10000) {
+          r + String.fromCharCode(ucs4);
+        } else if (ucs4 < 0x10FFFF) {
+          ucs4 -= 0x10000;
+          var surHi = 0xD800 + (ucs4 >> 10);
+          var surLo = 0xDC00 + (ucs4 & 0x3FF);
+          r = String.fromCharCode(surHi, surLo);
+        }
+        return r;
+      }
+
       function utf16Str2UcsArr(ustr) {
         var i, c, arr;
         arr = new Array();
@@ -145,22 +158,17 @@
       var hasUcs2IdsDB = false;
       var idsText = new String();
 
-      var unihanDB = new Array();
-      var hasUnihanDB = false;
-      var unihanText = new String();
-      var CJKU_SR = new String();
-      var CJKU_SR_DB = new Array();
+      var attrDB = new Array();
+      var hasAttrDB = false;
+      var attrJsonText = new String();
 
       function setGlobalText(destName, str) {
         switch (destName) {
         case "idsText":
           idsText = str;
           break;
-        case "unihanText":
-          unihanText = str;
-          break;
-        case "CJKU_SR":
-          CJKU_SR = str;
+        case "attrJsonText":
+          attrJsonText = str;
           break;
         default:
           break;
@@ -171,10 +179,8 @@
         switch (destName) {
         case "idsText":
           return idsText;
-        case "unihanText":
-          return unihanText;
-        case "CJKU_SR":
-          return CJKU_SR;
+        case "attrJsonText":
+          return attrJsonText;
         default:
           return null;
         }
@@ -242,12 +248,8 @@
         loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
       }
 
-      function loadUnihanFile() {
-        loadFile(document.UnihanFile.PathToUnihan.files[0], "unihanText", elmStatusMsg, document.getElementById("ButtonToLoadUnihan"), document.getElementById("ButtonToParseUnihan"));
-      }
-
-      function loadCJKUSRFile() {
-        loadFile(document.CJKUSRFile.PathToCJKUSR.files[0], "CJKU_SR", elmStatusMsg, document.getElementById("ButtonToLoadCJKUSR"), document.getElementById("ButtonToParseCJKUSR"));
+      function loadAttrJsonFile() {
+        loadFile(document.AttrJsonFile.PathToAttrJson.files[0], "attrJsonText", elmStatusMsg, document.getElementById("ButtonToLoadAttrJson"), document.getElementById("ButtonToParseAttrJson"));
       }
 
       function parseIdsText() {
@@ -267,67 +269,33 @@
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
 
-      function parseUnihanText() {
-        document.getElementById("ButtonToParseUnihan").disabled = true;
-        var i, j, l, toks, u, ustr, prop, val;
-        var unihanItems = unihanText.split("\n");
-        j = 0;
-        for ( i in unihanItems ) {
-          if ( unihanItems[i].slice(0,2) == "U+" ) {
-            toks = unihanItems[i].split("\t");
-            l = toks[0].length;
-            u = parseInt(toks[0].slice(2,l), 16);
-            if (u < 0x10000) {
-              ustr = String.fromCharCode(u);
-            } else if (u < 0xEFFFF) {
-              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
-            } else {
-              continue;
-            }
-            prop  = toks[1];
-            val   = toks[2];
-            if ( prop != "kTotalStrokes" ) {
-              continue;
-            }
-            if ( unihanDB[prop] == undefined ) {
-              unihanDB[prop] = new Array();
-            }
-            unihanDB[prop][ustr] = parseInt(val, 10);
-            j += 1;
+      function parseAttrJsonText() {
+        document.getElementById("ButtonToParseAttrJson").disabled = true;
+        var hs = eval( "(" + attrJsonText + ")" );
+        var reUcs = /^U\+[0-9A-F]+$/;
+        var reCJKF = /^CJKF[0-9]+$/;
+        var reNum = /^[0-9]+$/;
+        for ( k in hs ) {
+          var nk = null;
+          if (k.match(reUcs)) {
+            var ucs4 = parseInt(k, 16);
+            nk = ucs4ToUtf16Str(ucs4);
+          }
+          else if (k.match(reNum)) {
+            var ucs4 = 0x100000 + parseInt(k, 16);
+            nk = ucs4ToUtf16Str(ucs4);
+          }
+          else if (k.match(reCJKF)) {
+            var ucs4 = 0x100000 + parseInt(k.slice(4), 16);
+            nk = ucs4ToUtf16Str(ucs4);
+          }
+          if ( nk != null ) {
+            attrDB[nk] = hs[k];
           }
         }
-        hasUnihanDB = true;
-        unihanText = "";
-        elmStatusMsg.innerHTML = j + " items parsed";
-        document.getElementById("ButtonToParseUnihan").disabled = false;
+        elmStatusMsg.innerHTML = Object.keys(attrDB).length + " items parsed";
+        document.getElementById("ButtonToParseAttrJson").disabled = false;
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
-      }
-
-      function parseCJKUSR() {
-        var lines = CJKU_SR.split("\n");
-        for (var i in lines) {
-          var toks = lines[i].split(";");
-          if (toks.length == 11) {
-            var u = parseInt(toks[0], 16);
-            if (u < 0x10000) {
-              var ustr = String.fromCharCode(u);
-            } else if (u < 0xEFFFF) {
-              ustr = String.fromCharCode( ( ( u - 0x10000 ) >> 10 ) | 0xD800, ( ( u - 0x10000 ) & 0x3FF) | 0xDC00 );
-            }
-
-            CJKU_SR_DB[ustr] = new Array();
-            if (toks[2] != "") { CJKU_SR_DB[ustr]["G"] = toks[2]; }
-            if (toks[3] != "") { CJKU_SR_DB[ustr]["T"] = toks[3]; }
-            if (toks[4] != "") { CJKU_SR_DB[ustr]["J"] = toks[4]; }
-            if (toks[5] != "") { CJKU_SR_DB[ustr]["K"] = toks[5]; }
-            if (toks[6] != "") { CJKU_SR_DB[ustr]["V"] = toks[6]; }
-            if (toks[7] != "") { CJKU_SR_DB[ustr]["H"] = toks[7]; }
-            if (toks[8] != "") { CJKU_SR_DB[ustr]["KP"] = toks[8]; }
-            if (toks[9] != "") { CJKU_SR_DB[ustr]["U"] = toks[9]; }
-            if (toks[10] != "") { CJKU_SR_DB[ustr]["M"] = toks[10]; }
-          }
-        }
-        elmStatusMsg.innerHTML = lines.length.toString(10) + " items parsed";
       }
 
       function addHexCodePointToUcsArray(inArr) {
@@ -338,12 +306,12 @@
           if (ucs4 > 0x100000) {
             codeName = ucs4.toString(16).substr(1,5);
           }
-          if ( !hasUnihanDB ) {
+          if ( !hasAttrDB ) {
             outArr.push( inArr[i] + "(" + codeName + ")" );
-          } else if ( unihanDB["kTotalStrokes"] == undefined || inArr[i] == undefined || unihanDB["kTotalStrokes"][inArr[i]] == undefined ) {
+          } else if ( hasAttrDB[inArr[i]].totalStrokes == undefined) {
             outArr.push( inArr[i] + "(" + codeName + ":XXX)" );
           } else {
-            outArr.push( inArr[i] + "(" + codeName + ":" + unihanDB["kTotalStrokes"][inArr[i]].toString(10) + ")" );
+            outArr.push( inArr[i] + "(" + codeName + ":" + hasAttrDB[inArr[i]].totalStrokes.toString(10) + ")" );
           }
         }
         return outArr;
@@ -461,15 +429,15 @@
       }
 
       function sortFoundCharsByTotalStrokes() {
-        if (!hasUnihanDB) {
+        if (!hasAttrDB) {
           return;
         }
         if (foundChars == null) {
           return;
         }
         foundChars = foundChars.sort(function(a, b) {
-          var tsa = unihanDB["kTotalStrokes"][a];
-          var tsb = unihanDB["kTotalStrokes"][b];
+          var tsa = attrDB[a].totalStrokes;
+          var tsb = attrDB[b].totalStrokes;
           if (tsa != undefined && tsb != undefined) {
             return (tsa - tsb);
           } else if (tsa == undefined && tsb == undefined) {
@@ -554,17 +522,6 @@
 
         var useSrcFilter = new Array();
 
-        if (CJKU_SR.length) {
-          if (document.getElementById("ChkboxForSrcG").checked) { useSrcFilter.push("G"); };
-          if (document.getElementById("ChkboxForSrcT").checked) { useSrcFilter.push("T"); };
-          if (document.getElementById("ChkboxForSrcJ").checked) { useSrcFilter.push("J"); };
-          if (document.getElementById("ChkboxForSrcK").checked) { useSrcFilter.push("K"); };
-          if (document.getElementById("ChkboxForSrcV").checked) { useSrcFilter.push("V"); };
-          if (document.getElementById("ChkboxForSrcH").checked) { useSrcFilter.push("H"); };
-          if (document.getElementById("ChkboxForSrcU").checked) { useSrcFilter.push("U"); };
-          if (document.getElementById("ChkboxForSrcM").checked) { useSrcFilter.push("M"); };
-        }
-
         for ( i in components ) {
           c = components[i];
           d = ucs2idsDB[c];
@@ -590,26 +547,6 @@
           }
           candidates = results;
           results = new Array();
-        }
-
-        if (useSrcFilter.length > 0) {
-          candidates = candidates.slice(0);
-          results = new Array();
-
-          for ( i in candidates ) {
-            u = candidates[i];
-            var cjku_sr_db = CJKU_SR_DB[u];
-            if (cjku_sr_db != undefined) {
-              for ( j in useSrcFilter ) {
-                d = useSrcFilter[j];
-                if (cjku_sr_db[d] != undefined) {
-                  results.push(u);
-                  break;
-                }
-              }
-            }
-          }
-          candidates = results;
         }
 
         elmStatusMsg.innerHTML = "";
@@ -787,24 +724,6 @@
         updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
       }
 
-      function checkAllSources() {
-        var elmBtnToParseCJKUSR = document.getElementById("ButtonToParseCJKUSR");
-        for ( var elm = elmBtnToParseCJKUSR; elm.nextElementSibling != null; elm = elm.nextElementSibling ) {
-          if (elm.id.match(/^ChkboxForSrc/)) {
-            elm.checked = true;
-          }
-        }
-      }
-
-      function uncheckAllSources() {
-        var elmBtnToParseCJKUSR = document.getElementById("ButtonToParseCJKUSR");
-        for ( var elm = elmBtnToParseCJKUSR; elm.nextElementSibling != null; elm = elm.nextElementSibling ) {
-          if (elm.id.match(/^ChkboxForSrc/)) {
-            elm.checked = false;
-          }
-        }
-      }
-
     -->
     </script>
     <div id="Wrapper">
@@ -869,26 +788,11 @@
           <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="loadIdsFile()">
           <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
         </form>
-        <form name="UnihanFile" onsubmit="return false;">
-          <input type="file" name="PathToUnihan">
-          <input type="button" id="ButtonToLoadUnihan"  value="load Unihan.txt"  onclick="loadUnihanFile()">
-          <input type="button" id="ButtonToParseUnihan" value="parse Unihan.txt" onclick="parseUnihanText()" disabled>
+        <form name="AttrJsonFile" onsubmit="return false;">
+          <input type="file" name="PathToAttrJson">
+          <input type="button" id="ButtonToLoadAttrJson"  value="load attr.json"  onclick="loadAttrJsonFile()">
+          <input type="button" id="ButtonToParseAttrJson" value="parse attr.json" onclick="parseAttrJsonText()" disabled>
           <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
-        </form>
-        <form name="CJKUSRFile" onsubmit="return false;">
-          <input type="file" name="PathToCJKUSR">
-          <input type="button" id="ButtonToLoadCJKUSR"  value="load CJKU_SR"  onclick="loadCJKUSRFile()">
-          <input type="button" id="ButtonToParseCJKUSR" value="parse CJKU_SR" onclick="parseCJKUSR()" disabled>
-          <input type="checkbox" id="ChkboxForSrcG" checked>G
-          <input type="checkbox" id="ChkboxForSrcT" checked>T
-          <input type="checkbox" id="ChkboxForSrcJ" checked>J
-          <input type="checkbox" id="ChkboxForSrcK" checked>K
-          <input type="checkbox" id="ChkboxForSrcV" checked>V
-          <input type="checkbox" id="ChkboxForSrcH" checked>H
-          <input type="checkbox" id="ChkboxForSrcU" checked>U
-          <input type="checkbox" id="ChkboxForSrcM" checked>M
-          <input type="button" id="ButtonToCheckAll" value="Include All" onclick="checkAllSources()">
-          <input type="button" id="ButtonToUncheckAll" value="Exclude All" onclick="uncheckAllSources()">
         </form>
         <form name="CheckComponent" onsubmit="return false;">
           <input type="text" name="Components">
