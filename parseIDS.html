@@ -70,7 +70,7 @@
       function ucs4ToUtf16Str(ucs4) {
         var r = new String();
         if (ucs4 < 0x10000) {
-          r + String.fromCharCode(ucs4);
+          r = r + String.fromCharCode(ucs4);
         } else if (ucs4 < 0x10FFFF) {
           ucs4 -= 0x10000;
           var surHi = 0xD800 + (ucs4 >> 10);
@@ -295,15 +295,17 @@
 
       function parseAttrJsonText() {
         document.getElementById("ButtonToParseAttrJson").disabled = true;
+        var nCount = 0;
+        attrDB = new Array();
         for ( var l in attrJsonTexts ) {
           var hs = eval( "(" + attrJsonTexts[l] + ")" );
           var reUcs = /^U\+[0-9A-F]+$/;
           var reCJKF = /^CJKF[0-9]+$/;
           var reNum = /^[0-9]+$/;
-          for ( k in hs ) {
+          for ( var k in hs ) {
             var nk = null;
             if (k.match(reUcs)) {
-              var ucs4 = parseInt(k, 16);
+              var ucs4 = parseInt(k.slice(2), 16);
               nk = ucs4ToUtf16Str(ucs4);
             }
             else if (k.match(reNum)) {
@@ -316,16 +318,18 @@
             }
             if ( nk != null ) {
               attrDB[nk] = hs[k];
+              nCount += 1;
             }
           }
         }
-        elmStatusMsg.innerHTML = Object.keys(attrDB).length + " items parsed";
+        hasAttrDB = true;
+        elmStatusMsg.innerHTML = Object.keys(attrDB).length + "/" + nCount + " items parsed";
         document.getElementById("ButtonToParseAttrJson").disabled = false;
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
 
       function addHexCodePointToUcsArray(inArr) {
-        outArr = new Array();
+        var outArr = new Array();
         for ( var i in inArr ) {
           var ucs4 = ucsArrToUcs4Codepoint(inArr[i]);
           var codeName = "U+" + ucs4.toString(16).toUpperCase();
@@ -334,10 +338,10 @@
           }
           if ( !hasAttrDB ) {
             outArr.push( inArr[i] + "(" + codeName + ")" );
-          } else if ( hasAttrDB[inArr[i]].totalStrokes == undefined) {
+          } else if ( attrDB[inArr[i]] == undefined || attrDB[inArr[i]].totalStrokes == undefined ) {
             outArr.push( inArr[i] + "(" + codeName + ":XXX)" );
           } else {
-            outArr.push( inArr[i] + "(" + codeName + ":" + hasAttrDB[inArr[i]].totalStrokes.toString(10) + ")" );
+            outArr.push( inArr[i] + "(" + codeName + ":" + attrDB[inArr[i]].totalStrokes.toString(10) + ")" );
           }
         }
         return outArr;
@@ -462,8 +466,16 @@
           return;
         }
         foundChars = foundChars.sort(function(a, b) {
-          var tsa = attrDB[a].totalStrokes;
-          var tsb = attrDB[b].totalStrokes;
+          var tsa = undefined;
+          var tsb = undefined;
+          var attra = attrDB[a];
+          if (attra != null && attra != undefined) {
+            tsa = attra.totalStrokes;
+          }
+          var attrb = attrDB[b];
+          if (attrb != null && attrb != undefined) {
+            tsb = attrb.totalStrokes;
+          }
           if (tsa != undefined && tsb != undefined) {
             return (tsa - tsb);
           } else if (tsa == undefined && tsb == undefined) {
@@ -652,7 +664,7 @@
         if (usePng && foundChars != null && foundChars.length > (maxPngRows * maxPngColumns)) {
           rollPageNavigators("block");
           showFoundCharsPartial();
-        } else {
+        } else if (foundChars != null && foundChars.length > 0) {
           rollPageNavigators("none");
           showFoundResult(foundChars.slice(0));
         }
@@ -815,7 +827,7 @@
           <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
         </form>
         <form name="AttrJsonFile" onsubmit="return false;">
-          <input type="file" name="PathToAttrJson">
+          <input type="file" name="PathToAttrJson" multiple>
           <input type="button" id="ButtonToLoadAttrJson"  value="load attr.json"  onclick="loadAttrJsonFile()">
           <input type="button" id="ButtonToParseAttrJson" value="parse attr.json" onclick="parseAttrJsonText()" disabled>
           <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
