@@ -348,20 +348,32 @@
         return outArr;
       }
 
-      function getBasicImgHeight() {
-        if (basicImgHeight == undefined) {
+      function fillTableWithPngAfterGettingBasicImgHeight(elmTable, inArr) {
+        if (basicImgHeight == undefined || basicImgHeight == 0) {
           var footer = document.getElementById("Footer");
           var img = document.createElement("img");
           footer.appendChild(img);
           img.style.display = "none";
+          img.onload = function(event) {
+            basicImgHeight = event.target.naturalHeight;
+            fillTableWithPng(elmTable, inArr);
+          }
           img.src = document.getElementById("PngDir").value + "/4E/U+4E00.png";
-          basicImgHeight = img.naturalHeight;
-          footer.removeChild(img);
         }
+        fillTableWithPng(elmTable, inArr);
       }
 
+      function scaleUcsImgOnLoad(event) {
+        var img = event.target;
+        if (img.naturalHeight > basicImgHeight * 1.5) {
+          img.height = pngHeight * img.naturalHeight / basicImgHeight;
+        } else {
+          img.height = pngHeight;
+        }
+        img.removeEventListener("load", scaleUcsImgOnLoad);
+      };
+
       function fillTableWithPng(elmTable, inArr) {
-        getBasicImgHeight();
         // assume cells out of maxPngColumns x maxPngRows are already hidden
         var i, r, x, y;
         var ctxt, txt, cimg, img;
@@ -386,12 +398,8 @@
               img.align = "middle";
               img.style.display = "none";
               if (ucs4 < 0x100000) {
+                img.addEventListener("load", scaleUcsImgOnLoad);
                 img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
-                if (img.naturalHeight > basicImgHeight * 1.5) {
-                  img.height = pngHeight * (img.naturalHeight / basicImgHeight);
-                } else {
-                  img.height = pngHeight;
-                }
               } else { 
                 img.height = pngHeight;
                 img.src = pngDir + "/CJKF" + uhex.substr(1,3) + "/CJKF" + uhex.substr(1,5) + ".png";
@@ -429,7 +437,7 @@
 
         if (usePng) {
           elmFoundIdsBody.style.display = "none";
-          fillTableWithPng(elmFoundIdsTable, arr);
+          fillTableWithPngAfterGettingBasicImgHeight(elmFoundIdsTable, arr);
           elmFoundIdsTable.style.display = "block";
         } else {
           elmFoundIdsTable.style.display = "none";
