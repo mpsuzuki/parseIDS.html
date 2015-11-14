@@ -310,11 +310,11 @@
               nk = ucs4ToUtf16Str(ucs4);
             }
             else if (k.match(reNum)) {
-              var ucs4 = 0x100000 + parseInt(k, 16);
+              var ucs4 = 0x100000 + parseInt(k, 10);
               nk = ucs4ToUtf16Str(ucs4);
             }
             else if (k.match(reCJKF)) {
-              var ucs4 = 0x100000 + parseInt(k.slice(4), 16);
+              var ucs4 = 0x100000 + parseInt(k.slice(5), 10);
               nk = ucs4ToUtf16Str(ucs4);
             }
             if ( nk != null ) {
@@ -335,7 +335,7 @@
           var ucs4 = ucsArrToUcs4Codepoint(inArr[i]);
           var codeName = "U+" + ucs4.toString(16).toUpperCase();
           if (ucs4 > 0x100000) {
-            codeName = ucs4.toString(16).substr(1,5);
+            codeName = ("00000" + (ucs4 - 0x100000).toString(10)).slice(-5);
           }
           if ( !hasAttrDB ) {
             outArr.push( inArr[i] + "(" + codeName + ")" );
@@ -390,6 +390,7 @@
               var ustr = inArr[i].split("(");
               var ucs4 = ucsArrToUcs4Codepoint(ustr[0]);
               var uhex = ucs4.toString(16).toUpperCase();
+              var udec = ("00000" + (ucs4 - 0x100000).toString(10)).slice(-5);
               var subDir = uhex.slice(0,-2);
               var txt, img;
 
@@ -402,7 +403,7 @@
                 img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
               } else { 
                 img.height = pngHeight;
-                img.src = pngDir + "/CJKF" + uhex.substr(1,3) + "/CJKF" + uhex.substr(1,5) + ".png";
+                img.src = pngDir + "/CJKF" + udec.substr(0,3) + "/CJKF" + udec + ".png";
               }
               img.style.display = "";
 
@@ -421,8 +422,20 @@
               ctxt.style.borderBottom = "1px solid black";
               cimg.style.borderBottom = "1px solid black";
 
+              img.style.border = "";
+              if (hasAttrDB) {
+                var fattr = attrDB[ustr[0]];
+                if (fattr != undefined && fattr != null) {
+                  var fattrD = fattr.discussion;
+                  if (fattrD != undefined && fattrD != null && fattrD.length > 0) {
+                    img.title = fattrD;
+                    img.style.border = "1px dotted red";
+                  }
+                }
+              }
 
             } else {
+              img.style.border = "";
               ctxt.style.display = "none";
               cimg.style.display = "none";
             }
