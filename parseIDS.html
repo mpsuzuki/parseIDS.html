@@ -84,20 +84,31 @@
         return r;
       }
 
-      function utf16Str2UcsArr(ustr) {
-        var i, c, arr;
-        arr = new Array();
-        for (i = 0; i < ustr.length; i += 1) {
-          c = ustr.charCodeAt(i);
-          if (0xD800 <= c && c <= 0xDBFF && (i+1) < ustr.length) {
-            c = ustr.charCodeAt(i+1);
-            if (0xDC00 <= c && c <= 0xDFFF) {
-              arr.push(ustr.substr(i,2));
-              i += 1;
+      function uiStr2NameArr(ustr) {
+        var arr = new Array();
+        for (var i0 = 0; i0 < ustr.length; i0 += 1) {
+          var c0 = ustr.charCodeAt(i0);
+          if (c0 == 0x26) { // if "&"
+            for (var i1 = i0 + 1; i1 < ustr.length; i1 += 1) {
+              if (ustr.charCodeAt(i1) == 0x3B) { // lookup next ";"
+                break;
+              }
+            }
+            arr.push(ustr.substr(i0,i1 - i0 + 1));
+            i0 = i1;
+          } else
+          if (0xD800 <= c0 && c0 <= 0xDBFF && (i0+1) < ustr.length) {
+            c1 = ustr.charCodeAt(i0+1);
+            if (0xDC00 <= c1 && c1 <= 0xDFFF) {
+              arr.push(ustr.substr(i0,2));
+              i0 += 1;
               continue;
             }
+            arr.push(ustr.substr(i0,1));
           }
-          arr.push(ustr.substr(i,1));
+          else {
+            arr.push(ustr.substr(i0,1));
+          }
         }
         return arr;
       }
@@ -113,24 +124,24 @@
         this.idsArrays = new Array();
         this.cacheN = new Array();
       }
-      IdsItem.prototype.setUcs = function(ucs) {
-        this.ucs = ucs;
+      IdsItem.prototype.setName = function(name) {
+        this.name = name;
         return this;
       }
       IdsItem.prototype.setIdss = function(idss) {
         this.idss = idss;
-        for (i in this.idss) {
-          this.idsArrays[i] = utf16Str2UcsArr(this.idss[i]);
+        for (var i in this.idss) {
+          this.idsArrays[i] = uiStr2NameArr(this.idss[i]);
         }
         return this;
       }
-      IdsItem.prototype.countAComponent = function(c) {
+      IdsItem.prototype.countAComponent = function(nm) {
         var i, j, u;
         var idsArr;
         var numFound, maxNumFound;
-        if ( this.cacheN[c] != undefined ) {
-          return this.cacheN[c];
-        } else if ( this.ucs == c ) {
+        if ( this.cacheN[nm] != undefined ) {
+          return this.cacheN[nm];
+        } else if ( this.name == nm ) {
           maxNumFound = 1;
         } else {
           maxNumFound = 0;
@@ -139,9 +150,9 @@
             idsArr = this.idsArrays[i];
             if (idsArr.length > 1) {
               for ( j in idsArr ) {
-                u = idsArr[j];
-                if ( ucs2idsDB[u] != undefined ) {
-                  numFound += ucs2idsDB[u].countAComponent(c);
+                nm_ij = idsArr[j];
+                if ( name2idsDB[nm_ij] != undefined ) {
+                  numFound += name2idsDB[nm_ij].countAComponent(nm);
                 }
               }
             }
@@ -149,7 +160,7 @@
           }
         }
 
-        this.cacheN[c] = maxNumFound;
+        this.cacheN[nm] = maxNumFound;
         return maxNumFound;
       }
 
@@ -158,8 +169,8 @@
       // -------------------------------------------------------
       var brokenFileApi = false;
 
-      var ucs2idsDB = new Array();
-      var hasUcs2IdsDB = false;
+      var name2idsDB = new Array();
+      var hasName2IdsDB = false;
       var idsText = new String();
 
       var attrDB = new Array();
@@ -287,11 +298,11 @@
         for ( i in idsItems ) {
           toks = idsItems[i].split("\t");
           ucsName = toks.shift();
-          ucs = toks.shift();
-          ucs2idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
+          name = toks.shift();
+          name2idsDB[name] = new IdsItem().setName(name).setIdss(toks);
         }
 
-        hasUcs2IdsDB = true;
+        hasName2IdsDB = true;
         elmStatusMsg.innerHTML = idsItems.length.toString(10) + " items parsed";
         document.getElementById("ButtonToParseIds").disabled = false;
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
@@ -609,7 +620,7 @@
       }
 
       function lookupComponents() {
-        var components = utf16Str2UcsArr(document.CheckComponent.Components.value);
+        var components = uiStr2NameArr(document.CheckComponent.Components.value);
         var lookupDB = new Array();
         var candidates = new Array();
         var results = new Array();
@@ -619,25 +630,25 @@
         var useSrcFilter = new Array();
 
         for ( i in components ) {
-          c = components[i];
-          d = ucs2idsDB[c];
+          nodeName = components[i];
+          d = name2idsDB[nodeName];
           if ( d == undefined || d == null ) {
-            ignoredChars.push(c);
-          } else if ( lookupDB[c] == undefined ) {
-            lookupDB[c] = 1;
+            ignoredChars.push(nodeName);
+          } else if ( lookupDB[nodeName] == undefined ) {
+            lookupDB[nodeName] = 1;
           } else {
-            lookupDB[c] += 1;
+            lookupDB[nodeName] += 1;
           }
         }
 
-        for ( u in ucs2idsDB ) {
+        for ( u in name2idsDB ) {
           candidates.push(u);
         }
 
-        for ( c in lookupDB ) {
+        for ( nodeName in lookupDB ) {
           for ( i in candidates ) {
             u = candidates[i];
-            if ( ucs2idsDB[u].countAComponent(c) >= lookupDB[c] ) {
+            if ( name2idsDB[u].countAComponent(nodeName) >= lookupDB[nodeName] ) {
               results.push(u);
             }
           }
@@ -676,8 +687,8 @@
           u = wholeString.substring(j,k);
           var curHead = wholeString.substring(0,j);
           var curTail = wholeString.substring(k,l);
-          if (ucs2idsDB[u] != undefined && ucs2idsDB[u].idss.length > 0) {
-            wholeString = curHead + "(" + ucs2idsDB[u].idss.join("|") + ")" + curTail;
+          if (name2idsDB[u] != undefined && name2idsDB[u].idss.length > 0) {
+            wholeString = curHead + "(" + name2idsDB[u].idss.join("|") + ")" + curTail;
           }
         }
         return wholeString;
@@ -786,11 +797,11 @@
 
       function rollAtomicIds(obj) {
         if (obj.checked) {
-          if (hasUcs2IdsDB && elmAtomicIds.innerHTML.length == 0) {
+          if (hasName2IdsDB && elmAtomicIds.innerHTML.length == 0) {
             var ucs;
             var atomicIds = new Array();
-            for ( ucs in ucs2idsDB ) {
-              if ( 1 == ucs2idsDB[ucs].idsArrays.length && ucs == ucs2idsDB[ucs].idsArrays[0] ) {
+            for ( ucs in name2idsDB ) {
+              if ( 1 == name2idsDB[ucs].idsArrays.length && ucs == name2idsDB[ucs].idsArrays[0] ) {
                 atomicIds.push(ucs);
               }
             }
