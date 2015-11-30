@@ -68,9 +68,6 @@
       var sortTotalStroke = false;
       var foundChars = null;
 
-      // -- global constant
-      var offsetToCjkG = 0x103000;
-
       function ucs4ToUtf16Str(ucs4) {
         var r = new String();
         if (ucs4 < 0x10000) {
@@ -94,7 +91,15 @@
                 break;
               }
             }
-            arr.push(ustr.substr(i0,i1 - i0 + 1));
+            if (ustr.substr(i0, i1-i0+1).match(/&#[0-9]+;/)) {
+              var ucs4 = parseInt(ustr.substr(i0, i1-i0+1).slice(2, -1));
+              arr.push(ucs4ToUtf16Str(ucs4));
+            } else if (ustr.substr(i0, i1-i0+1).match(/&#x[0-9A-Fa-f]+;/)) {
+              var ucs4 = parseInt(ustr.substr(i0, i1-i0+1).slice(3, -1), 16);
+              arr.push(ucs4ToUtf16Str(ucs4));
+            } else {
+              arr.push(ustr.substr(i0,i1-i0+1));
+            }
             i0 = i1;
           } else
           if (0xD800 <= c0 && c0 <= 0xDBFF && (i0+1) < ustr.length) {
@@ -314,32 +319,20 @@
         attrDB = new Array();
         for ( var l in attrJsonTexts ) {
           var hs = eval( "(" + attrJsonTexts[l] + ")" );
-          var reUcs = /^U\+[0-9A-F]+$/;
-          var reCJKF = /^CJKF[0-9]+$/;
-          var reCJKG = /^CJKG[0-9]+$/;
-          var reNum = /^[0-9]+$/;
+          var reUcsDec = /^&#[0-9]+;$/;
+          var reUcsHex = /^&#x[0-9A-Fa-f]+;$/;
           for ( var k in hs ) {
-            var nk = null;
-            if (k.match(reUcs)) {
-              var ucs4 = parseInt(k.slice(2), 16);
+            var nk = k;
+            if (k.match(reUcsDec)) {
+              var ucs4 = parseInt(k.slice(2), 10);
               nk = ucs4ToUtf16Str(ucs4);
             }
-            else if (k.match(reNum)) {
-              var ucs4 = 0x100000 + parseInt(k, 10);
+            else if (k.match(reUcsHex)) {
+              var ucs4 = parseInt(k.slice(3), 16);
               nk = ucs4ToUtf16Str(ucs4);
             }
-            else if (k.match(reCJKF)) {
-              var ucs4 = 0x100000 + parseInt(k.slice(5), 10);
-              nk = ucs4ToUtf16Str(ucs4);
-            }
-            else if (k.match(reCJKG)) {
-              var ucs4 = offsetToCjkG + parseInt(k.slice(5), 10);
-              nk = ucs4ToUtf16Str(ucs4);
-            }
-            if ( nk != null ) {
-              attrDB[nk] = hs[k];
-              nCount += 1;
-            }
+            attrDB[nk] = hs[k];
+            nCount += 1;
           }
         }
         hasAttrDB = true;
@@ -351,21 +344,20 @@
       function addHexCodePointToUcsArray(inArr) {
         var outArr = new Array();
         for ( var i in inArr ) {
-          var ucs4 = ucsArrToUcs4Codepoint(inArr[i]);
-          var codeName = "U+" + ucs4.toString(16).toUpperCase();
-          if (ucs4 > 0x100000) {
-            if (ucs4 < offsetToCjkG) {
-              codeName = "F" + ("00000" + (ucs4 - 0x100000).toString(10)).slice(-5);
-            } else {
-              codeName = "G" + ("00000" + (ucs4 - offsetToCjkG).toString(10)).slice(-5);
-            }
-          }
-          if ( !hasAttrDB ) {
-            outArr.push( inArr[i] + "(" + codeName + ")" );
-          } else if ( attrDB[inArr[i]] == undefined || attrDB[inArr[i]].totalStrokes == undefined ) {
-            outArr.push( inArr[i] + "(" + codeName + ":XXX)" );
+          var rawUcs4 = null;
+          if (inArr[i].charCodeAt(0) == 0x26) {
+            rawUcs4 = null;
           } else {
-            outArr.push( inArr[i] + "(" + codeName + ":" + attrDB[inArr[i]].totalStrokes.toString(10) + ")" );
+            rawUcs4 = ucsArrToUcs4Codepoint(inArr[i]);
+          }
+          var rawStrOrName = rawUcs4 ? inArr[i] : inArr[i].slice(1,-1);
+          var hexCode = rawUcs4 ? ("U+" + (rawUcs4.toString(16).toUpperCase())) : "U+FFFD";
+          if ( !hasAttrDB ) {
+            outArr.push( rawStrOrName + "(" + hexCode + ")" );
+          } else if ( attrDB[key] == undefined || attrDB[key].totalStrokes == undefined ) {
+            outArr.push( rawStrOrName + "(" + hexCode + ":XXX)" );
+          } else {
+            outArr.push( rawStrOrName + "(" + hexCode + ":" + attrDB[inArr[i]].totalStrokes.toString(10) + ")" );
           }
         }
         return outArr;
@@ -411,26 +403,19 @@
             img = cimg.childNodes[0];
             if ( i < inArr.length ) {
               var ustr = inArr[i].split("(");
-              var ucs4 = ucsArrToUcs4Codepoint(ustr[0]);
-              var uhex = ucs4.toString(16).toUpperCase();
-              var udec = ("00000" + (ucs4 - 0x100000).toString(10)).slice(-5);
-              var subDir = uhex.slice(0,-2);
+              var ucs4 = ustr[0].match(/^\w+$/) ? null : ucsArrToUcs4Codepoint(ustr[0]);
+              var uhex = ucs4 ? ucs4.toString(16).toUpperCase() : null;
               var txt, img;
 
               txt.data = inArr[i];
 
               img.align = "middle";
               img.style.display = "none";
-              if (ucs4 < 0x100000) {
+              if (ucs4) {
                 img.addEventListener("load", scaleUcsImgOnLoad);
-                img.src = pngDir + "/" + subDir + "/U+" + uhex + ".png";
-              } else if (ucs4 < offsetToCjkG) {
-                img.height = pngHeight;
-                img.src = pngDir + "/CJKF" + udec.substr(0,3) + "/CJKF" + udec + ".png";
+                img.src = pngDir + "/" + uhex.slice(0,-2) + "/U+" + uhex + ".png";
               } else {
-                udec = ("00000" + (ucs4 - offsetToCjkG).toString(10)).slice(-5);
-                img.height = pngHeight;
-                img.src = pngDir + "/CJKG" + udec.substr(0,3) + "/CJKG" + udec + ".png";
+                img.src = pngDir + "/" + ustr[0].slice(0,-2) + "/" + ustr[0] + ".png";
               }
               img.style.display = "";
 
@@ -473,6 +458,12 @@
       function showFoundResult(arr) {
         if (document.getElementById("ChkboxForHexUcs").checked) {
           arr = addHexCodePointToUcsArray(arr);
+        } else {
+          for (var i in arr) {
+            if (arr[i].charCodeAt(0) == 0x26) {
+              arr[i] = arr[i].slice(1,-1);
+            }
+          }
         }
 
         if (usePng) {
