@@ -176,7 +176,7 @@
 
       var name2idsDB = new Array();
       var hasName2IdsDB = false;
-      var idsText = new String();
+      var idsTexts = new Array();
 
       var attrDB = new Array();
       var hasAttrDB = false;
@@ -185,7 +185,10 @@
       function setGlobalText(destName, obj) {
         switch (destName) {
         case "idsText":
-          idsText = obj;
+          idsTexts.push(obj);
+          break;
+        case "idsTexts":
+          idsTexts = idsTexts.concat(obj);
           break;
         case "attrJsonText":
           attrJsonTexts.push(obj);
@@ -201,9 +204,11 @@
       function getGlobalText(destName) {
         switch (destName) {
         case "idsText":
-          return idsText;
+          return idsTexts.shift();
+        case "idsTexts":
+          return idsTexts;
         case "attrJsonText":
-          return attrJsonText.shift();
+          return attrJsonTexts.shift();
         case "attrJsonTexts":
           return attrJsonTexts;
         default:
@@ -282,7 +287,14 @@
       }
 
       function loadIdsFile() {
-        loadFile(document.IdsFile.PathToIds.files[0], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
+        var idsFiles = document.IdsFile.PathToIds.files;
+        document.getElementById("ButtonToLoadIds").disabled = true;
+        document.getElementById("ButtonToParseIds").disabled = true;
+        for (var i in idsFiles) {
+          loadFile(idsFiles[i], "idsText", elmStatusMsg, document.getElementById("ButtonToLoadIds"), document.getElementById("ButtonToParseIds"));
+        }
+        document.getElementById("ButtonToLoadIds").disabled = false;
+        document.getElementById("ButtonToParseIds").disabled = false;
       }
 
       function loadAttrJsonFile() {
@@ -298,17 +310,19 @@
 
       function parseIdsText() {
         document.getElementById("ButtonToParseIds").disabled = true;
-        var ucsName, ucs, toks, i, j, k;
-        var idsItems = idsText.split("\n");
-        for ( i in idsItems ) {
-          toks = idsItems[i].split("\t");
-          ucsName = toks.shift();
-          name = toks.shift();
-          name2idsDB[name] = new IdsItem().setName(name).setIdss(toks);
+        for ( var l in idsTexts ) {
+          var ucsName, ucs, toks, i, j, k;
+          var idsItems = idsTexts[l].split("\n");
+          for ( i in idsItems ) {
+            toks = idsItems[i].split("\t");
+            ucsName = toks.shift();
+            name = toks.shift();
+            name2idsDB[name] = new IdsItem().setName(name).setIdss(toks);
+          }
         }
 
         hasName2IdsDB = true;
-        elmStatusMsg.innerHTML = idsItems.length.toString(10) + " items parsed";
+        elmStatusMsg.innerHTML = Object.keys(name2idsDB).length.toString(10) + " items parsed";
         document.getElementById("ButtonToParseIds").disabled = false;
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
@@ -882,7 +896,7 @@
           <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
         </div>
         <form name="IdsFile" onsubmit="return false;">
-          <input type="file" name="PathToIds">
+          <input type="file" name="PathToIds" multiple>
           <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="loadIdsFile()">
           <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
         </form>
