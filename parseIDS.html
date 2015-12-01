@@ -297,7 +297,7 @@
         document.getElementById("ButtonToParseIds").disabled = false;
       }
 
-      function loadAttrJsonFile() {
+      function loadAttrJsonFiles() {
         var attrJsonFiles = document.AttrJsonFile.PathToAttrJson.files;
         document.getElementById("ButtonToLoadAttrJson").disabled = true;
         document.getElementById("ButtonToParseAttrJson").disabled = true;
@@ -913,7 +913,7 @@
         </form>
         <form name="AttrJsonFile" onsubmit="return false;">
           <input type="file" name="PathToAttrJson" multiple>
-          <input type="button" id="ButtonToLoadAttrJson"  value="load attr.json"  onclick="loadAttrJsonFile()">
+          <input type="button" id="ButtonToLoadAttrJson"  value="load attr.json"  onclick="loadAttrJsonFiles()">
           <input type="button" id="ButtonToParseAttrJson" value="parse attr.json" onclick="parseAttrJsonText()" disabled>
           <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
         </form>
