@@ -683,6 +683,11 @@
           l = wholeString.length;
           k = j + 1;
           c = wholeString.charCodeAt(j);
+          if (c == 0x3B) { // ";"
+            while (selectionStart <= j && wholeString.charCodeAt(j) != 0x26) {
+              j -= 1;
+            }
+          } else
           if (0xD800 <= c && c <= 0xDBFF && (j+1) < l) {
             d = wholeString.charCodeAt(j+1);
             if (0xDC00 <= d && d <= 0xDFFF) {
@@ -690,6 +695,12 @@
             }
           }
           u = wholeString.substring(j,k);
+          if (u.match(/^&#[0-9]+;$/)) {
+            u = ucs4ToUtf16Str(parseInt(u.slice(2,-1)));
+          } else
+          if (u.match(/^&#x[0-9A-Fa-f]+;$/)) {
+            u = ucs4ToUtf16Str(parseInt(u.slice(3,-1), 16));
+          }
           var curHead = wholeString.substring(0,j);
           var curTail = wholeString.substring(k,l);
           if (name2idsDB[u] != undefined && name2idsDB[u].idss.length > 0) {
