@@ -567,14 +567,23 @@
         if (foundChars == null) {
           return;
         }
-        var foundCharsUCS = new Array();
+        var foundCharsUCS4 = new Array();
+        var foundCharsCoded = new Array();
+        var foundCharsNotCoded = new Array();
         for ( var i = foundChars.length; i > 0; ) {
           i -= 1;
-          foundCharsUCS[foundChars[i]] = ucsArrToUcs4Codepoint(foundChars[i]);
+          if (foundChars[i].charCodeAt(0) == 0x26) {
+            foundCharsNotCoded.push(foundChars[i]);
+          } else {
+            foundCharsUCS4[foundChars[i]] = ucsArrToUcs4Codepoint(foundChars[i]);
+            foundCharsCoded.push(foundChars[i]);
+          }
         }
-        foundChars = foundChars.sort(function(a, b) {
-          return (foundCharsUCS[a] - foundCharsUCS[b]);
-        });
+        foundChars = foundCharsCoded.sort(
+                       function(a,b){
+                         return (foundCharsUCS4[a] - foundCharsUCS4[b]);
+                       }
+                     ).concat(foundCharsNotCoded.sort());
       }
 
       function showFoundCharsPartial() {
@@ -614,6 +623,7 @@
         var maxPngPerPage = maxPngRows * maxPngColumns;
         var arrToShow;
         var foundIdsHeader = document.getElementById("FoundIdsHeader");
+        sortFoundCharsByUCS();
         if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
           updatePageSelectors(Math.ceil(foundChars.length / maxPngPerPage));
           rollPageNavigators("block");
