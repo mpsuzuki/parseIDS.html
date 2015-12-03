@@ -402,6 +402,13 @@
         img.removeEventListener("load", scaleUcsImgOnLoad);
       };
 
+      function scaleNonUcsImgOnLoad(event) {
+        var img = event.target;
+        img.height = pngHeight;
+        img.removeEventListener("load", scaleUcsImgOnLoad);
+      };
+
+
       function fillTableWithPng(elmTable, inArr) {
         // assume cells out of maxPngColumns x maxPngRows are already hidden
         var i, r, x, y;
@@ -425,12 +432,14 @@
 
               img.align = "middle";
               img.style.display = "none";
+              img.removeEventListener("load", scaleUcsImgOnLoad);
+              img.removeEventListener("load", scaleNonUcsImgOnLoad);
               if (ucs4) {
                 img.addEventListener("load", scaleUcsImgOnLoad);
                 img.src = pngDir + "/" + uhex.slice(0,-2) + "/U+" + uhex + ".png";
               } else {
+                img.addEventListener("load", scaleNonUcsImgOnLoad);
                 img.src = pngDir + "/" + ustr[0].slice(0,-2) + "/" + ustr[0] + ".png";
-                img.height = pngHeight;
               }
               img.style.display = "";
 
