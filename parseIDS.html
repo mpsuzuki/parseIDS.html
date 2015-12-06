@@ -444,8 +444,12 @@
                   img.src = pngDir + "/" + ustr.slice(0,-2) + "/" + ustr + ".png";
                 } else
                 {
-                  var gidPrefix = ustr.substr(0, ustr.length - /[-_]*[0-9A-F]+$/.exec(ustr)[0].length);
-                  img.src = pngDir + "/" + gidPrefix + "/" + ustr + ".png";
+                  var gidPrefix = ustr.substr(0, ustr.length - /[-_]*[0-9A-F\.]+$/.exec(ustr)[0].length);
+                  if (gidPrefix == "CDP") {
+                    img.src = "http://glyphwiki.org/glyph/" + ustr.toLowerCase() + ".50px.png";
+                  } else {
+                    img.src = pngDir + "/" + gidPrefix + "/" + ustr + ".png";
+                  }
                 }
               }
               img.style.display = "";
