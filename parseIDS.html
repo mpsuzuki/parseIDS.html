@@ -423,8 +423,8 @@
             txt = ctxt.childNodes[0];
             img = cimg.childNodes[0];
             if ( i < inArr.length ) {
-              var ustr = inArr[i].split("(");
-              var ucs4 = ustr[0].match(/^\w+$/) ? null : ucsArrToUcs4Codepoint(ustr[0]);
+              var ustr = inArr[i].split("(")[0];
+              var ucs4 = /[0-9A-F]/.test(ustr) ? null : ucsArrToUcs4Codepoint(ustr);
               var uhex = ucs4 ? ucs4.toString(16).toUpperCase() : null;
               var txt, img;
 
@@ -439,7 +439,13 @@
                 img.src = pngDir + "/" + uhex.slice(0,-2) + "/U+" + uhex + ".png";
               } else {
                 img.addEventListener("load", scaleNonUcsImgOnLoad);
-                img.src = pngDir + "/" + ustr[0].slice(0,-2) + "/" + ustr[0] + ".png";
+                if (/^CJKF[0-9]+$/.test(ustr)) {
+                  img.src = pngDir + "/" + ustr.slice(0,-2) + "/" + ustr + ".png";
+                } else
+                {
+                  var gidPrefix = ustr.substr(0, ustr.length - /[-_]*[0-9A-F]+$/.exec(ustr)[0].length);
+                  img.src = pngDir + "/" + gidPrefix + "/" + ustr + ".png";
+                }
               }
               img.style.display = "";
 
