@@ -365,13 +365,14 @@
             rawUcs4 = ucsArrToUcs4Codepoint(inArr[i]);
           }
           var rawStrOrName = rawUcs4 ? inArr[i] : inArr[i].slice(1,-1);
-          var hexCode = rawUcs4 ? ("U+" + (rawUcs4.toString(16).toUpperCase())) : "U+FFFD";
+          var hexCode = rawUcs4 ? ("U+" + (rawUcs4.toString(16).toUpperCase())) : "-";
+          var hexCodeOrName = rawUcs4 ? hexCode : rawStrOrName;
           if ( !hasAttrDB ) {
             outArr.push( rawStrOrName + "(" + hexCode + ")" );
-          } else if ( attrDB[key] == undefined || attrDB[key].totalStrokes == undefined ) {
-            outArr.push( rawStrOrName + "(" + hexCode + ":XXX)" );
+          } else if ( attrDB[hexCodeOrName] == undefined || attrDB[hexCodeOrName].totalStrokes == undefined ) {
+            outArr.push( rawStrOrName + "(" + hexCode + ":-)" );
           } else {
-            outArr.push( rawStrOrName + "(" + hexCode + ":" + attrDB[inArr[i]].totalStrokes.toString(10) + ")" );
+            outArr.push( rawStrOrName + "(" + hexCode + ":" + attrDB[hexCodeOrName].totalStrokes.toString(10) + ")" );
           }
         }
         return outArr;
