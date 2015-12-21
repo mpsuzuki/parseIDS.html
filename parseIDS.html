@@ -43,6 +43,7 @@
     }
     -->
     </style>
+    <script type="text/javascript" src="jszip.min.js"></script>
   </head>
   <body>
     <script type="text/javascript">
@@ -879,15 +880,15 @@
       }
 
       var autoLoadIfOverNetwork = function() {
-        if (document.location.protocol != "file:") {
+        if (document.location.protocol != "file:" && 0 > document.location.hash.toLowerCase().indexOf("noautoload")) {
           var msgElm = document.getElementById("StatusMsg");
           var urlPrefix = document.location.href.split("/").slice(0,-1).join("/");
 
           var filesToLoad = [
             // { baseName: "extf-ids.txt", globalTextName: "idsText"},
             // { baseName: "extf-attr.json", globalTextName: "attrJsonText"},
-            { baseName: "ids-cdp.txt", globalTextName: "idsText"},
-            { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText"}
+            { baseName: "ids-cdp.txt", globalTextName: "idsText", tryAsZip: true},
+            { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText", tryAsZip: true}
           ];
 
           var loadFirstFileByXHR = function(files) {
@@ -895,12 +896,30 @@
             var url = urlPrefix + "/" + f.baseName;
 
             var xhr = new XMLHttpRequest();
-            // if (f.baseName.split(".").slice(-1).toLowerCase() == "zip") { xhr.responseType = "arraybuffer"; };
-            xhr.open("GET", url, true); 
+            if (f.tryAsZip) {
+              xhr.responseType = "arraybuffer";
+              url = url.split(".").slice(0,-1).join(".") + ".zip";
+            };
+            xhr.open("GET", url, true);
             xhr.onload = function(evt) {
               if (this.readyState == 4 && this.status == 200) {
-                setGlobalText(f.globalTextName, this.responseText);
-                msgElm.innerHTML = (msgElm.innerHTML + this.responseText.length.toString(10) + " bytes loaded<br>");
+                if (f.tryAsZip) {
+                  var unzip = new JSZip(new Uint8Array(this.response));
+                  var orgFile = unzip.file(f.baseName);
+                  if (orgFile) {
+                    setGlobalText(f.globalTextName, orgFile.asText());
+                    msgElm.innerHTML = (msgElm.innerHTML + orgFile.asText().length.toString(10) + " bytes loaded<br>");
+                    unzip = null;
+                    orgFile = null;
+                  };
+                } else {
+                  setGlobalText(f.globalTextName, this.responseText);
+                  msgElm.innerHTML = (msgElm.innerHTML + this.responseText.length.toString(10) + " bytes loaded<br>");
+                }
+              } else if (this.readyState == 4 && this.status == 404 && f.tryAsZip) {
+                msgElm.innerHTML = (msgElm.innerHTML + this.statusText + "<br>");
+                f.tryAsZip = false;
+                files.unshift(f);
               };
 
               if (files.length > 0) {
@@ -911,7 +930,7 @@
               }
             };
             xhr.onerror = function(evt) {
-              msgElm.innerHTML = (msgElm.innerHTML + evt.target.statusText + "<br>");
+              msgElm.innerHTML = (msgElm.innerHTML + this.statusText + "<br>");
             };
             msgElm.innerHTML = (msgElm.innerHTML + "Retrieving " + url + " ...");
             xhr.send();
