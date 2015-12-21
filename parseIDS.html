@@ -878,6 +878,47 @@
         updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
       }
 
+      var autoLoadIfOverNetwork = function() {
+        if (document.location.protocol != "file:") {
+          var msgElm = document.getElementById("StatusMsg");
+          var urlPrefix = document.location.href.split("/").slice(0,-1).join("/");
+
+          var filesToLoad = [
+            // { baseName: "extf-ids.txt", globalTextName: "idsText"},
+            // { baseName: "extf-attr.json", globalTextName: "attrJsonText"},
+            { baseName: "ids-cdp.txt", globalTextName: "idsText"},
+            { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText"}
+          ];
+
+          var loadFirstFileByXHR = function(files) {
+            var f = files.shift();
+            var url = urlPrefix + "/" + f.baseName;
+
+            var xhr = new XMLHttpRequest();
+            // if (f.baseName.split(".").slice(-1).toLowerCase() == "zip") { xhr.responseType = "arraybuffer"; };
+            xhr.open("GET", url, true); 
+            xhr.onload = function(evt) {
+              if (this.readyState == 4 && this.status == 200) {
+                setGlobalText(f.globalTextName, this.responseText);
+                msgElm.innerHTML = (msgElm.innerHTML + this.responseText.length.toString(10) + " bytes loaded<br>");
+              };
+
+              if (files.length > 0) {
+                loadFirstFileByXHR(files);
+              } else {
+                parseIdsText();
+                parseAttrJsonText();
+              }
+            };
+            xhr.onerror = function(evt) {
+              msgElm.innerHTML = (msgElm.innerHTML + evt.target.statusText + "<br>");
+            };
+            msgElm.innerHTML = (msgElm.innerHTML + "Retrieving " + url + " ...");
+            xhr.send();
+          };
+          loadFirstFileByXHR(filesToLoad);
+        };
+      };
     -->
     </script>
     <div id="Wrapper">
@@ -992,6 +1033,7 @@
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
       updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
+      autoLoadIfOverNetwork();
     </script>
   </body>
 </html>
