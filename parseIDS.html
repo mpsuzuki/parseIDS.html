@@ -564,10 +564,18 @@
           var tsa = undefined;
           var tsb = undefined;
           var attra = attrDB[a];
+          if (attra == undefined) {
+            var hexa = "U+" + ucsArrToUcs4Codepoint(a).toString(16).toUpperCase();
+            attra = attrDB[hexa];
+          }
           if (attra != null && attra != undefined) {
             tsa = attra.totalStrokes;
           }
           var attrb = attrDB[b];
+          if (attrb == undefined) {
+            var hexb = "U+" + ucsArrToUcs4Codepoint(b).toString(16).toUpperCase();
+            attrb = attrDB[hexb];
+          }
           if (attrb != null && attrb != undefined) {
             tsb = attrb.totalStrokes;
           }
@@ -581,6 +589,7 @@
             return 1;
           }
         });
+        foundChars.sorted = true;
       }
 
       function sortFoundCharsByUCS() {
@@ -604,6 +613,7 @@
                          return (foundCharsUCS4[a] - foundCharsUCS4[b]);
                        }
                      ).concat(foundCharsNotCoded.sort());
+        foundChars.sorted = true;
       }
 
       function showFoundCharsPartial() {
@@ -643,7 +653,9 @@
         var maxPngPerPage = maxPngRows * maxPngColumns;
         var arrToShow;
         var foundIdsHeader = document.getElementById("FoundIdsHeader");
-        sortFoundCharsByUCS();
+        if (!foundChars.sorted) {
+          sortFoundCharsByUCS();
+        }
         if (usePng && foundChars != null && foundChars.length > maxPngPerPage) {
           updatePageSelectors(Math.ceil(foundChars.length / maxPngPerPage));
           rollPageNavigators("block");
@@ -699,6 +711,7 @@
         elmStatusMsg.innerHTML += candidates.length.toString(10) + " characters are found";
 
         foundChars = candidates.slice(0);
+        foundChars.sorted = false;
         curPage = 0;
 
         if (sortTotalStroke) {
@@ -900,15 +913,16 @@
 
         var msgElm = document.getElementById("StatusMsg");
         var urlPrefix = document.location.href.split("/").slice(0,-1).join("/");
-        testIfPngAvailablility("/PNG/");
+        testIfPngAvailablility("PNG/");
 
         document.getElementById("ChkboxForTotalStrokeSort").checked = true;
+        sortTotalStroke = true;
 
         var filesToLoad = [
           // { baseName: "extf-ids.txt", globalTextName: "idsText"},
           // { baseName: "extf-attr.json", globalTextName: "attrJsonText"},
-          { baseName: "ids-cdp.txt", globalTextName: "idsText", tryAsZip: true},
-          { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText", tryAsZip: true}
+          { baseName: "ids-cdp.txt", globalTextName: "idsText", tryAsZip: false},
+          { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText", tryAsZip: false}
         ];
 
         var loadFirstFileByXHR = function(files) {
