@@ -43,7 +43,6 @@
     }
     -->
     </style>
-    <script type="text/javascript" src="jszip.min.js"></script>
   </head>
   <body>
     <script type="text/javascript">
@@ -956,7 +955,22 @@
           msgElm.innerHTML = (msgElm.innerHTML + "Retrieving " + url + " ...");
           xhr.send();
         };
-        loadFirstFileByXHR(filesToLoad);
+
+        for (var i = 0 ; i < filesToLoad.length; i += 1) {
+          if (filesToLoad[i].tryAsZip) {
+            var elmJsZip = document.createElement("script");
+            elmJsZip.type = "text/javascript";
+            elmJsZip.src = "jszip.min.js"
+            elmJsZip.onload = function(evt) {
+              loadFirstFileByXHR(filesToLoad);
+            };
+            elmHead = document.getElementsByTagName("head")[0].appendChild(elmJsZip);
+            break;
+          }
+        };
+        if (i == filesToLoad.length) {
+          loadFirstFileByXHR(filesToLoad);
+        }
       };
     -->
     </script>
