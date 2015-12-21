@@ -879,6 +879,21 @@
         updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
       }
 
+      var testIfPngAvailablility = function(pngDir) {
+        document.getElementById("PngDir").value = pngDir;
+
+        var xhr = new XMLHttpRequest();
+        // xhr.responseType = "blob";
+        xhr.open("GET", document.getElementById("PngDir").value + "/4E/U+4E00.png", true);
+        xhr.onload = function(evt) {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("ShowPng").checked = true;
+            usePng = true;
+          }
+        };
+        xhr.send();
+      };
+
       var autoLoadIfOverNetwork = function() {
         if (document.location.protocol == "file:" || document.location.hash.toLowerCase().indexOf("noautoload") > -1) {
           return;
@@ -886,10 +901,7 @@
 
         var msgElm = document.getElementById("StatusMsg");
         var urlPrefix = document.location.href.split("/").slice(0,-1).join("/");
-
-        usePng = true;
-        document.getElementById("ShowPng").checked = true;
-        document.getElementById("PngDir").value = "/PNG/";
+        testIfPngAvailablility("/PNG/");
 
         document.getElementById("ChkboxForTotalStrokeSort").checked = true;
 
