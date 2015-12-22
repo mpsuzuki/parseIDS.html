@@ -929,7 +929,7 @@
         xhr.send();
       };
 
-      var autoLoadIfOverNetwork = function() {
+      var autoLoadIfOverNetwork = function(funcPostProc) {
         if (document.location.protocol == "file:" || document.location.hash.toLowerCase().indexOf("noautoload") > -1) {
           return;
         }
@@ -948,7 +948,7 @@
           { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText", tryAsZip: false}
         ];
 
-        var loadFirstFileByXHR = function(files) {
+        var loadFirstFileByXHR = function(files, funcPostProc) {
           var f = files.shift();
           var url = urlPrefix + "/" + f.baseName;
 
@@ -980,10 +980,11 @@
             };
 
             if (files.length > 0) {
-              loadFirstFileByXHR(files);
+              loadFirstFileByXHR(files, funcPostProc);
             } else {
               parseIdsText();
               parseAttrJsonText();
+              funcPostProc();
             }
           };
           xhr.onerror = function(evt) {
@@ -999,15 +1000,49 @@
             elmJsZip.type = "text/javascript";
             elmJsZip.src = "jszip.min.js"
             elmJsZip.onload = function(evt) {
-              loadFirstFileByXHR(filesToLoad);
+              loadFirstFileByXHR(filesToLoad, funcPostProc);
             };
             elmHead = document.getElementsByTagName("head")[0].appendChild(elmJsZip);
             break;
           }
         };
         if (i == filesToLoad.length) {
-          loadFirstFileByXHR(filesToLoad);
+          loadFirstFileByXHR(filesToLoad, funcPostProc);
         }
+      };
+
+      var restoreInitializationMenu = function() {
+        var e = document.getElementById("menusForInitialization");
+        e.style.overflowY = "hidden";
+
+        var increaseHeight = function() {
+          e.style.height = Math.min(e.clientHeight + 3, e.scrollHeight);
+          if (e.scrollHeight > e.clientHeight) {
+            setTimeout(arguments.callee, 5);
+          } else {
+            e.style.removeProperty("height");
+            e.style.removeProperty("overflowY");
+            document.getElementById("topHrLine").style.display = "none";
+            document.getElementById("bottomHrLine").style.display = "block";
+          }
+        };
+        increaseHeight();
+      }
+
+      var hideInitializationMenu = function() {
+        var e = document.getElementById("menusForInitialization");
+        e.style.overflowY = "hidden";
+
+        var decreaseHeight = function() {
+          e.style.height = Math.max(e.clientHeight - 3, 0);
+          if (e.clientHeight > 0) {
+            setTimeout(arguments.callee, 5);
+          } else {
+            document.getElementById("topHrLine").style.display = "block";
+            document.getElementById("bottomHrLine").style.display = "none";
+          }
+        };
+        decreaseHeight();
       };
     -->
     </script>
@@ -1023,62 +1058,72 @@
         </div>
       </div>
       <div id="MainContainer">
-        <form id="Setting">
-          <input type="checkbox" id="ChkboxForDebug"   onclick="updateDebug(this)">debug
-          <input type="checkbox" id="ChkboxForOptions" onclick="rollOptionForms(this)">show options
-          <input type="checkbox" id="ChkboxForSideBar" onclick="rollSideBar(this)">show sideBar
-        </form>
-        <div id="OptionForms">
-          <select id="FontSize">
-            <option value="10">10
-            <option value="12" selected>12
-            <option value="14">14
-            <option value="16">16
-            <option value="18">18
-            <option value="20">20
-            <option value="24">24
-            <option value="36">36
-            <option value="48">48
-            <option value="60">60
-            <option value="72">72
-          </select>
-          <br>
-          <input type="text" id="PngDir"> dirname for PNG files
-          <select id="PngHeight">
-            <option value="20">20
-            <option value="30">30
-            <option value="40">40
-            <option value="50" selected>50
-            <option value="60">60
-            <option value="70">70
-          </select>
-          height of picture
-          <select id="PngRow">
-            <option value="5">5
-            <option value="10" selected>10
-            <option value="20">20
-            <option value="30">30
-          </select> nRows
-          <select id="PngColumn">
-            <option value="1">1
-            <option value="2" selected>2
-            <option value="3">3
-            <option value="4">4
-            <option value="5">5
-          </select> nColumns
-          <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
+        <div id="topHrLine" style="text-align: right; font-size: 8px; display: none;">
+           &#x2193; &#x2193; &#x2193; &#x2193;
+           <hr>
         </div>
-        <form name="IdsFile" onsubmit="return false;">
-          <input type="file" name="PathToIds" multiple>
-          <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="loadIdsFiles()">
-          <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
-        </form>
-        <form name="AttrJsonFile" onsubmit="return false;">
-          <input type="file" name="PathToAttrJson" multiple>
-          <input type="button" id="ButtonToLoadAttrJson"  value="load attr.json"  onclick="loadAttrJsonFiles()">
-          <input type="button" id="ButtonToParseAttrJson" value="parse attr.json" onclick="parseAttrJsonText()" disabled>
-          <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
-        </form>
+        <div id="menusForInitialization">
+          <form id="Setting">
+            <input type="checkbox" id="ChkboxForDebug"   onclick="updateDebug(this)">debug
+            <input type="checkbox" id="ChkboxForOptions" onclick="rollOptionForms(this)">show options
+            <input type="checkbox" id="ChkboxForSideBar" onclick="rollSideBar(this)">show sideBar
+          </form>
+          <div id="OptionForms">
+            <select id="FontSize">
+              <option value="10">10
+              <option value="12" selected>12
+              <option value="14">14
+              <option value="16">16
+              <option value="18">18
+              <option value="20">20
+              <option value="24">24
+              <option value="36">36
+              <option value="48">48
+              <option value="60">60
+              <option value="72">72
+            </select>
+            <br>
+            <input type="text" id="PngDir"> dirname for PNG files
+            <select id="PngHeight">
+              <option value="20">20
+              <option value="30">30
+              <option value="40">40
+              <option value="50" selected>50
+              <option value="60">60
+              <option value="70">70
+            </select>
+            height of picture
+            <select id="PngRow">
+              <option value="5">5
+              <option value="10" selected>10
+              <option value="20">20
+              <option value="30">30
+            </select> nRows
+            <select id="PngColumn">
+              <option value="1">1
+              <option value="2" selected>2
+              <option value="3">3
+              <option value="4">4
+              <option value="5">5
+            </select> nColumns
+            <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
+          </div>
+          <form name="IdsFile" onsubmit="return false;">
+            <input type="file" name="PathToIds" multiple>
+            <input type="button" id="ButtonToLoadIds"  value="load ids.txt"  onclick="loadIdsFiles()">
+            <input type="button" id="ButtonToParseIds" value="parse ids.txt" onclick="parseIdsText()" disabled>
+          </form>
+          <form name="AttrJsonFile" onsubmit="return false;">
+            <input type="file" name="PathToAttrJson" multiple>
+            <input type="button" id="ButtonToLoadAttrJson"  value="load attr.json"  onclick="loadAttrJsonFiles()">
+            <input type="button" id="ButtonToParseAttrJson" value="parse attr.json" onclick="parseAttrJsonText()" disabled>
+            <input type="checkbox" id="ChkboxForTotalStrokeSort" onclick="updateSort()" disabled>sort by total stroke
+          </form>
+        </div>
+        <div id="bottomHrLine" style="text-align: right; font-size: 8px;">
+          <hr>
+          &#x2191; &#x2191; &#x2191; &#x2191;
+        </div>
         <form name="CheckComponent" onsubmit="return false;">
           <input type="text" name="Components">
           <input type="button" value="lookup" onclick="lookupComponents()">
@@ -1123,7 +1168,9 @@
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
       updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
-      autoLoadIfOverNetwork();
+      autoLoadIfOverNetwork(hideInitializationMenu);
+      document.getElementById("topHrLine").addEventListener("click", restoreInitializationMenu);
+      document.getElementById("bottomHrLine").addEventListener("click", hideInitializationMenu);
     </script>
   </body>
 </html>
