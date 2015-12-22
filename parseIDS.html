@@ -571,25 +571,37 @@
         if (foundChars == null) {
           return;
         }
+        var getTotalStrokes = function(k) {
+          var v = attrDB[k];
+          if (v && v.totalStrokes != undefined) {
+            return v.totalStrokes;
+          }
+
+          var cF = k.slice(0,1);
+          if (cF.charCodeAt(0) > 127) {
+            v = attrDB["U+" + ucsArrToUcs4Codepoint(k).toString(16).toUpperCase()];
+          }
+          if (v && v.totalStrokes != undefined) {
+            return v.totalStrokes;
+          }
+
+          var cL = k.slice(-1);
+          if (cF == "&" && cL == ";") {
+            v = attrDB[k.slice(1,-1)];
+          }
+          if (v && v.totalStrokes != undefined) {
+            return v.totalStrokes;
+          }
+
+          return undefined;
+        };
+        var totalStrokes = new Array();
+        for (var i = 0; i < foundChars.length; i += 1) {
+          totalStrokes[foundChars[i]] = getTotalStrokes(foundChars[i]);
+        }
         foundChars = foundChars.sort(function(a, b) {
-          var tsa = undefined;
-          var tsb = undefined;
-          var attra = attrDB[a];
-          if (attra == undefined) {
-            var hexa = "U+" + ucsArrToUcs4Codepoint(a).toString(16).toUpperCase();
-            attra = attrDB[hexa];
-          }
-          if (attra != null && attra != undefined) {
-            tsa = attra.totalStrokes;
-          }
-          var attrb = attrDB[b];
-          if (attrb == undefined) {
-            var hexb = "U+" + ucsArrToUcs4Codepoint(b).toString(16).toUpperCase();
-            attrb = attrDB[hexb];
-          }
-          if (attrb != null && attrb != undefined) {
-            tsb = attrb.totalStrokes;
-          }
+          var tsa = totalStrokes[a];
+          var tsb = totalStrokes[b];
           if (tsa != undefined && tsb != undefined) {
             return (tsa - tsb);
           } else if (tsa == undefined && tsb == undefined) {
@@ -931,7 +943,7 @@
 
         var filesToLoad = [
           { baseName: "extf-ids.txt", globalTextName: "idsText"},
-          { baseName: "extf-cp-ucs-5ed-cd2.json", globalTextName: "attrJsonText"},
+          { baseName: "irgn2088-cjkf-attributes_20151222-1533.json", globalTextName: "attrJsonText"},
           { baseName: "ids-cdp.txt", globalTextName: "idsText", tryAsZip: false},
           { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText", tryAsZip: false}
         ];
