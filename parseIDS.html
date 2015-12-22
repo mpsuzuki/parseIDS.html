@@ -315,10 +315,17 @@
           var idsItems = idsTexts[l].split("\n");
           for ( i in idsItems ) {
             toks = idsItems[i].split("\t");
-            ucsName = toks.shift();
-            name = toks.shift();
-            name2idsDB[name] = new IdsItem().setName(name).setIdss(toks);
-          }
+            if (toks.length > 1 && !(/^[#;]/.test(toks[0]))) {
+              ucsName = toks.shift();
+              if (ucsName.slice(0,2) == "U+" || ucsName.slice(0,4) == "CDP-") {
+                name = toks.shift();
+              } else
+              if (toks[0].charCodeAt(0) != 0x26 && toks[0].slice(-1).charCodeAt(0) != 59) {
+                name = "&" + ucsName + ";";
+              };
+              name2idsDB[name] = new IdsItem().setName(name).setIdss(toks);
+            };
+          };
         }
 
         hasName2IdsDB = true;
