@@ -447,15 +447,19 @@
                 img.src = pngDir + "/" + uhex.slice(0,-2) + "/U+" + uhex + ".png";
               } else {
                 img.addEventListener("load", scaleNonUcsImgOnLoad);
-                if (/^CJKF[0-9]+$/.test(ustr)) {
-                  img.src = pngDir + "/" + ustr.slice(0,-2) + "/" + ustr + ".png";
+                var imgBaseName = (attrDB[ustr] != undefined && attrDB[ustr].imgBaseName != undefined) ? attrDB[ustr].imgBaseName : ustr; 
+                if (/^U\+[0-9A-F]+$/.test(imgBaseName)) {
+                  img.src = pngDir + "/" + imgBaseName.slice(2,-2) + "/" + imgBaseName + ".png";
+                } else
+                if (/^CJKF[0-9]+$/.test(imgBaseName)) {
+                  img.src = pngDir + "/" + imgBaseName.slice(0,-2) + "/" + imgBaseName + ".png";
                 } else
                 {
-                  var gidPrefix = ustr.substr(0, ustr.length - /[-_]*[0-9A-F\.]+$/.exec(ustr)[0].length);
+                  var gidPrefix = imgBaseName.substr(0, imgBaseName.length - /[-_]*[0-9A-F\.]+$/.exec(imgBaseName)[0].length);
                   if (gidPrefix == "CDP") {
-                    img.src = "http://glyphwiki.org/glyph/" + ustr.toLowerCase() + ".50px.png";
+                    img.src = "http://glyphwiki.org/glyph/" + imgBaseName.toLowerCase() + ".50px.png";
                   } else {
-                    img.src = pngDir + "/" + gidPrefix + "/" + ustr + ".png";
+                    img.src = pngDir + "/" + gidPrefix + "/" + imgBaseName + ".png";
                   }
                 }
               }
@@ -926,8 +930,8 @@
         sortTotalStroke = true;
 
         var filesToLoad = [
-          // { baseName: "extf-ids.txt", globalTextName: "idsText"},
-          // { baseName: "extf-attr.json", globalTextName: "attrJsonText"},
+          { baseName: "extf-ids.txt", globalTextName: "idsText"},
+          { baseName: "extf-cp-ucs-5ed-cd2.json", globalTextName: "attrJsonText"},
           { baseName: "ids-cdp.txt", globalTextName: "idsText", tryAsZip: false},
           { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText", tryAsZip: false}
         ];
