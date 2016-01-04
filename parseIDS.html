@@ -360,27 +360,41 @@
         document.getElementById("ChkboxToShowAtomicIds").disabled = false;
       }
 
+      var ReUcsDec = /^&#[0-9]+;$/;
+      var ReUcsHex = /^&#x[0-9A-Fa-f]+;$/;
+
+      function mergeAttrJsonText(srcArr, dstArr) {
+        var nCount = 0;
+        for ( var k in srcArr ) {
+          var nk = k;
+          if (k.match(ReUcsDec)) {
+            var ucs4 = parseInt(k.slice(2), 10);
+            nk = ucs4ToUtf16Str(ucs4);
+          } else
+          if (k.match(ReUcsHex)) {
+            var ucs4 = parseInt(k.slice(3), 16);
+            nk = ucs4ToUtf16Str(ucs4);
+          }
+
+          if (dstArr[nk]) {
+            for ( var kk in srcArr[k] ) {
+              dstArr[nk][kk] = srcArr[k][kk];
+            }
+          } else {
+            dstArr[nk] = srcArr[k];
+          }
+          nCount += 1;
+        }
+        return nCount;
+      }
+
       function parseAttrJsonText() {
         document.getElementById("ButtonToParseAttrJson").disabled = true;
         var nCount = 0;
         attrDB = new Array();
         for ( var l in attrJsonTexts ) {
           var hs = eval( "(" + attrJsonTexts[l] + ")" );
-          var reUcsDec = /^&#[0-9]+;$/;
-          var reUcsHex = /^&#x[0-9A-Fa-f]+;$/;
-          for ( var k in hs ) {
-            var nk = k;
-            if (k.match(reUcsDec)) {
-              var ucs4 = parseInt(k.slice(2), 10);
-              nk = ucs4ToUtf16Str(ucs4);
-            }
-            else if (k.match(reUcsHex)) {
-              var ucs4 = parseInt(k.slice(3), 16);
-              nk = ucs4ToUtf16Str(ucs4);
-            }
-            attrDB[nk] = hs[k];
-            nCount += 1;
-          }
+          nCount += mergeAttrJsonText(hs, attrDB);
         }
         hasAttrDB = true;
         elmStatusMsg.innerHTML = Object.keys(attrDB).length + "/" + nCount + " items parsed";
