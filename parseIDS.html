@@ -966,9 +966,21 @@
 
       var getCookieAsArr = function() {
         var arr = new Array();
+        var curDate = new Date();
         document.cookie.split("; ").forEach(function(keyValuePair){
-          var toks = keyValuePair.split("=");
-          arr[toks[0]] = toks[1];
+          if (keyValuePair.length > 0) {
+            var toks = keyValuePair.split("=");
+            var vToks = toks[1].split("@");
+
+            var expireDate = new Date();
+            expireDate = expireDate.setTime(vToks.slice(-1));
+
+            if (expireDate > curDate) {
+              arr[toks[0]] = vToks[0];
+            } else {
+              console.log("cookie " + toks[0] + " should be expired, too old");
+            }
+          }
         });
         return arr;
       };
@@ -980,7 +992,7 @@
         for (var k in arr) {
           if (k.length > 0) {
             document.cookie = [
-                               (k + "=" + arr[k]),
+                               (k + "=" + arr[k] + "@" + expireDate.getTime()),
                                "max-age=" + maxAge,
                                "expires=" + encodeURIComponent(expireDate.toGMTString())
                               ].join("; ");
