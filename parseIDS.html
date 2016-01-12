@@ -1005,7 +1005,9 @@
 
         var selForCookieMaxAge = document.createElement("select");
         selForCookieMaxAge.setAttribute("id", "cookieMaxAge");
-        [ { name: "1 min.",   maxAge: 60 },
+        [
+          { name: "30 sec.",  maxAge: 30 },
+          { name: "1 min.",   maxAge: 60 },
           { name: "10 min.",  maxAge: 600 },
           { name: "1 hour",   maxAge: (60 * 60) },
           { name: "3 hours",  maxAge: (3 * 60 * 60) },
