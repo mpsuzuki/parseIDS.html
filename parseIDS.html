@@ -973,12 +973,14 @@
             var vToks = toks[1].split("@");
 
             var expireDate = new Date();
-            expireDate = expireDate.setTime(vToks.slice(-1));
+            expireDate.setTime(vToks.slice(-1));
 
-            if (ignoreAge || expireDate > curDate) {
+            if (ignoreAge || expireDate.getTime() > curDate.getTime()) {
               arr[toks[0]] = vToks[0];
             } else {
-              console.log("cookie " + toks[0] + " should be expired, too old");
+              console.log(" current time: " + curDate.getTime().toString(10) + " sec.");
+              console.log("  expire time: " + expireDate.getTime().toString(10) + " sec.");
+              console.log(" cookie " + toks[0] + " should be expired, too old: " + (curDate.getTime() - expireDate.getTime()).toString(10) + " sec");
             }
           }
         });
@@ -988,6 +990,8 @@
       var setCookiesFromArrWithMaxAge = function(arr, maxAge) {
         var expireDate = new Date();
         expireDate.setTime((new Date()).getTime() + maxAge);
+        console.log(" current time: " + (new Date()).getTime().toString(10) + " sec.");
+        console.log("  expire time: " + expireDate.getTime().toString(10) + " sec.");
         for (var k in arr) {
           if (k.length > 0) {
             document.cookie = [
@@ -1000,12 +1004,12 @@
       }
 
       var updateCookieFromArr = function(arr) {
-        var maxAge = parseInt(document.getElementById("cookieMaxAge").value, 10);
+        var maxAge = parseInt(document.getElementById("cookieMaxAge").value, 10) * 1000;
         setCookiesFromArrWithMaxAge(arr, maxAge);
       };
 
       var expireAllCookies = function() {
-        setCookiesFromArrWithMaxAge(getCookieAsArr(true), -60);
+        setCookiesFromArrWithMaxAge(getCookieAsArr(true), -1);
       };
 
       var showDialogAndAuth = function() {
