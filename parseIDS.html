@@ -974,9 +974,11 @@
       };
 
       var updateCookieFromArr = function(arr) {
+        var elmCookieMaxAge = document.getElementById("cookieMaxAge");
+        var maxAge = elmCookieMaxAge.value;
         for (var k in arr) {
           if (k.length > 0) {
-            document.cookie = [(k + "=" + arr[k]), "max-age=60"].join("; ");
+            document.cookie = [(k + "=" + arr[k]), "max-age=" + maxAge].join("; ");
           }
         };
       };
@@ -990,7 +992,7 @@
 
         var elmPAuth = document.createElement("p");
         elmPAuth.style.textAlign = "center";
-        elmPAuth.style.marginTop = parseInt(elmAuthenticator.style.height) * 0.45;
+        elmPAuth.style.marginTop = parseInt(elmAuthenticator.style.height) * 0.40;
         elmAuthenticator.appendChild(elmPAuth);
 
         var btnToYes = document.createElement("input");
@@ -999,7 +1001,25 @@
 
         var btnToNo = document.createElement("input");
         btnToNo.setAttribute("type", "button");
-        btnToNo.setAttribute("value", "No");
+        btnToNo.setAttribute("value", "No, use as a guest");
+
+        var selForCookieMaxAge = document.createElement("select");
+        selForCookieMaxAge.setAttribute("id", "cookieMaxAge");
+        [ { name: "1 min.",   maxAge: 60 },
+          { name: "10 min.",  maxAge: 600 },
+          { name: "1 hour",   maxAge: (60 * 60) },
+          { name: "3 hours",  maxAge: (3 * 60 * 60) },
+          { name: "6 hours",  maxAge: (6 * 60 * 60) },
+          { name: "12 hours", maxAge: (12 * 60 * 60) },
+          { name: "1 day",    maxAge: (24 * 60 * 60) },
+          { name: "1 week",   maxAge: (7 * 24 * 60 * 60) },
+          { name: "1 month",  maxAge: (28 * 24 * 60 * 60) }
+        ].forEach(function(o){
+          var elmO = document.createElement("option");
+          elmO.value = o["maxAge"]; 
+          elmO.appendChild(document.createTextNode(o["name"]));
+          selForCookieMaxAge.appendChild(elmO);
+        });
 
         elmPAuth.appendChild(document.createTextNode("Do you have ID/password to use authenticated mode?"));
         elmPAuth.appendChild(document.createElement("br"));
@@ -1007,7 +1027,9 @@
         elmPAuth.appendChild(document.createElement("br"));
         elmPAuth.appendChild(btnToYes);
         elmPAuth.appendChild(btnToNo);
-
+        elmPAuth.appendChild(document.createElement("br"));
+        elmPAuth.appendChild(document.createTextNode("how long the cookie remember your choice?"));
+        elmPAuth.appendChild(selForCookieMaxAge);
        
         var tryAuth = function() {
           var postFunc1 = function(evt) {
