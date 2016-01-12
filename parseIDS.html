@@ -964,7 +964,7 @@
         xhr.send();
       };
 
-      var getCookieAsArr = function() {
+      var getCookieAsArr = function(ignoreAge) {
         var arr = new Array();
         var curDate = new Date();
         document.cookie.split("; ").forEach(function(keyValuePair){
@@ -975,7 +975,7 @@
             var expireDate = new Date();
             expireDate = expireDate.setTime(vToks.slice(-1));
 
-            if (expireDate > curDate) {
+            if (ignoreAge || expireDate > curDate) {
               arr[toks[0]] = vToks[0];
             } else {
               console.log("cookie " + toks[0] + " should be expired, too old");
@@ -985,9 +985,8 @@
         return arr;
       };
 
-      var updateCookieFromArr = function(arr) {
-        var maxAge = document.getElementById("cookieMaxAge").value;
-        var expireDate = new Date()
+      var setCookiesFromArrWithMaxAge = function(arr, maxAge) {
+        var expireDate = new Date();
         expireDate.setTime((new Date()).getTime() + maxAge);
         for (var k in arr) {
           if (k.length > 0) {
@@ -998,6 +997,15 @@
                               ].join("; ");
           }
         };
+      }
+
+      var updateCookieFromArr = function(arr) {
+        var maxAge = parseInt(document.getElementById("cookieMaxAge").value, 10);
+        setCookiesFromArrWithMaxAge(arr, maxAge);
+      };
+
+      var expireAllCookies = function() {
+        setCookiesFromArrWithMaxAge(getCookieAsArr(true), -60);
       };
 
       var showDialogAndAuth = function() {
@@ -1027,7 +1035,7 @@
           { name: "30 sec.",  maxAge: 30 },
           { name: "1 min.",   maxAge: 60 },
           { name: "10 min.",  maxAge: 600 },
-          { name: "1 hour",   maxAge: (60 * 60) },
+          { name: "1 hour",   maxAge: (60 * 60), selected: true },
           { name: "3 hours",  maxAge: (3 * 60 * 60) },
           { name: "6 hours",  maxAge: (6 * 60 * 60) },
           { name: "12 hours", maxAge: (12 * 60 * 60) },
@@ -1039,6 +1047,9 @@
           elmO.value = o["maxAge"]; 
           elmO.appendChild(document.createTextNode(o["name"]));
           selForCookieMaxAge.appendChild(elmO);
+          if (o["selected"]) {
+            elmO.selected = true;
+          }
         });
 
         elmPAuth.appendChild(document.createTextNode("Do you have ID/password to use authenticated mode?"));
@@ -1048,7 +1059,7 @@
         elmPAuth.appendChild(btnToYes);
         elmPAuth.appendChild(btnToNo);
         elmPAuth.appendChild(document.createElement("br"));
-        elmPAuth.appendChild(document.createTextNode("how long the cookie remember your choice?"));
+        elmPAuth.appendChild(document.createTextNode("how long your cookie remembers your choice? "));
         elmPAuth.appendChild(selForCookieMaxAge);
        
         var tryAuth = function() {
@@ -1082,7 +1093,7 @@
       }
 
       var prepAuthenticator = function() {
-        var cookie = getCookieAsArr();
+        var cookie = getCookieAsArr(false);
         var jqd1 = new $.Deferred();
         var promise1 = jqd1.promise();
 
@@ -1272,10 +1283,21 @@
         </div>
         <div id="menusForInitialization">
           <form id="Setting">
-            [<input type="checkbox" id="ChkboxForDebug"   onclick="updateDebug(this)">debug]
-            [<input type="checkbox" id="ShowPng"          onclick="this.blur();this.focus();" onchange="updateUsePngFromUi(this)">show PNG files]
-            [<input type="checkbox" id="ChkboxForOptions" onclick="rollOptionForms(this)">show options]
-            [<input type="checkbox" id="ChkboxForSideBar" onclick="rollSideBar(this)">show sideBar]
+            <span style="display: none;">
+              [<input type="checkbox" id="ChkboxForDebug"   onclick="updateDebug(this)">debug]
+            </span>
+            <span>
+              [<input type="checkbox" id="ShowPng"          onclick="this.blur();this.focus();" onchange="updateUsePngFromUi(this)">show PNG files]
+            </span>
+            <span>
+              [<input type="checkbox" id="ChkboxForOptions" onclick="rollOptionForms(this)">show options]
+            </span>
+            <span>
+              [<input type="checkbox" id="ChkboxForSideBar" onclick="rollSideBar(this)">show sideBar]
+            </span>
+            <span>
+              <input type="button" value="Clear Cookie" onclick="expireAllCookies();">
+            </span>
           </form>
           <div id="OptionForms">
             <select id="FontSize">
