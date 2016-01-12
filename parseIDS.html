@@ -71,6 +71,7 @@
     </style>
   </head>
   <body>
+    <script type="text/javascript" src="jquery.min.js"></script>
     <script type="text/javascript">
     <!--
       // -- constant DOM element
@@ -936,8 +937,8 @@
         }
       }
 
-      function updateUsePng(obj) {
-        usePng = obj.checked;
+      function updateUsePngFromUi() {
+        usePng = document.getElementById("ShowPng");
       }
 
       function updatePngHeight() {
@@ -954,20 +955,126 @@
         updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
       }
 
-      var testIfPngAvailablility = function(pngDir) {
+      var testIfPngAvailablility = function(pngDir,postFunc) {
         document.getElementById("PngDir").value = pngDir;
 
         var xhr = new XMLHttpRequest();
-        // xhr.responseType = "blob";
         xhr.open("GET", document.getElementById("PngDir").value + "/4E/U+4E00.png", true);
-        xhr.onload = function(evt) {
-          if (this.readyState == 4 && this.status == 200) {
-            document.getElementById("ShowPng").checked = true;
-            usePng = true;
-          }
-        };
+        xhr.onload = postFunc;
         xhr.send();
       };
+
+      var getCookieAsArr = function() {
+        var arr = new Array();
+        document.cookie.split("; ").forEach(function(keyValuePair){
+          var toks = keyValuePair.split("=");
+          arr[toks[0]] = toks[1];
+        });
+        return arr;
+      };
+
+      var updateCookieFromArr = function(arr) {
+        for (var k in arr) {
+          if (k.length > 0) {
+            document.cookie = [(k + "=" + arr[k]), "max-age=60"].join("; ");
+          }
+        };
+      };
+
+      var showDialogAndAuth = function() {
+        var jqd = new $.Deferred();
+
+        var elmAuthenticator = document.getElementById("Authenticator");
+        elmAuthenticator.style.width = elmAuthenticator.nextElementSibling.offsetWidth + (2 * elmAuthenticator.nextElementSibling.offsetLeft);
+        elmAuthenticator.style.height = document.body.offsetHeight + (2 * document.body.offsetTop);
+
+        var elmPAuth = document.createElement("p");
+        elmPAuth.style.textAlign = "center";
+        elmPAuth.style.marginTop = parseInt(elmAuthenticator.style.height) * 0.45;
+        elmAuthenticator.appendChild(elmPAuth);
+
+        var btnToYes = document.createElement("input");
+        btnToYes.setAttribute("type", "button");
+        btnToYes.setAttribute("value", "Yes");
+
+        var btnToNo = document.createElement("input");
+        btnToNo.setAttribute("type", "button");
+        btnToNo.setAttribute("value", "No");
+
+        elmPAuth.appendChild(document.createTextNode("Do you have ID/password to use authenticated mode?"));
+        elmPAuth.appendChild(document.createElement("br"));
+        elmPAuth.appendChild(document.createTextNode("(cookie should be enabled to remember your choice)"));
+        elmPAuth.appendChild(document.createElement("br"));
+        elmPAuth.appendChild(btnToYes);
+        elmPAuth.appendChild(btnToNo);
+
+       
+        var tryAuth = function() {
+          var postFunc1 = function(evt) {
+            if (this.readyState == 4) {
+              if (this.status == 200) {
+                document.getElementById("ShowPng").checked = true;
+                jqd.resolve();
+              } else
+              if (this.status == 401) {
+                document.getElementById("ShowPng").checked = false;
+                jqd.resolve();
+              } else
+              {
+                document.getElementById("ShowPng").checked = false;
+                jqd.reject();
+              }
+            }
+          };
+          testIfPngAvailablility("PNG/", postFunc1);
+        };
+          
+        var abortAuth = function() {
+          document.getElementById("ShowPng").checked = false;
+          jqd.reject();
+        };
+        btnToYes.addEventListener("click", tryAuth);
+        btnToNo.addEventListener("click", abortAuth);
+
+        return jqd.promise();
+      }
+
+      var prepAuthenticator = function() {
+        var cookie = getCookieAsArr();
+        if (cookie["use-auth-mode"] == "no") {
+          document.getElementById("ShowPng").checked = false;
+        } else
+        if (cookie["use-auth-mode"] == "yes") {
+          var postFunc1 = function(evt) {
+            if (this.readyState == 4) {
+              if (this.status == 200) {
+                document.getElementById("ShowPng").checked = true;
+              } else
+              if (this.status == 401 || this.status == 404) {
+                document.getElementById("ShowPng").checked = false;
+              }
+            }
+          };
+          testIfPngAvailablility("PNG/", postFunc1);
+        }
+        else {
+          elmAuthenticator = document.getElementById("Authenticator");
+          elmAuthenticator.style.zIndex = 2;
+          var promise = showDialogAndAuth();
+          promise.done(function(){
+            cookie["use-auth-mode"] = "yes";
+            updateCookieFromArr(cookie);
+            elmAuthenticator.style.zIndex = 0;
+            elmAuthenticator.style.display = "none";
+          });
+          promise.fail(function(){
+            cookie["use-auth-mode"] = "no";
+            updateCookieFromArr(cookie);
+            elmAuthenticator.style.zIndex = 0;
+            elmAuthenticator.style.display = "none";
+          });
+        }
+      }
 
       var autoLoadIfOverNetwork = function(funcPostProc) {
         if (document.location.protocol == "file:" || document.location.hash.toLowerCase().indexOf("noautoload") > -1) {
@@ -976,7 +1083,6 @@
 
         var msgElm = document.getElementById("StatusMsg");
         var urlPrefix = document.location.href.split("/").slice(0,-1).join("/");
-        testIfPngAvailablility("PNG/");
 
         document.getElementById("ChkboxForTotalStrokeSort").checked = true;
         sortTotalStroke = true;
@@ -1086,9 +1192,8 @@
       };
     -->
     </script>
-    <div id="Wrapper">
-      <div id="Header">
-      </div>
+    <div id="Wrapper" style="position: relative;">
+      <div id="Header"></div>
       <div id="SideBar">
         <div id="SideBarTop">
           <input type="checkbox" id="ChkboxToShowAtomicIds" onclick="rollAtomicIds(this)" disabled>show atomic ids
@@ -1097,7 +1202,8 @@
           <div id="AtomicIds"></div>
         </div>
       </div>
-      <div id="MainContainer">
+      <div id="Authenticator" style="position: absolute; left:0; top:0; z-index: 0; opacity: 0.9; background-color: gray;"></div>
+      <div id="MainContainer" style="position: absolute; left:0; top:0; z-index: 1;">
         <div id="topHrLine" style="text-align: right; font-size: 8px; display: none;">
            &#x2193; &#x2193; &#x2193; &#x2193;
            <hr>
@@ -1146,7 +1252,7 @@
               <option value="4">4
               <option value="5">5
             </select> nColumns
-            <input type="checkbox" id="ShowPng" onclick="updateUsePng(this)"> show PNG files
+            <input type="checkbox" id="ShowPng" onclick="this.blur();this.focus();" onchange="updateUsePngFromUi(this)">show PNG files
           </div>
           <form name="IdsFile" onsubmit="return false;">
             <input type="file" name="PathToIds" multiple>
@@ -1208,6 +1314,7 @@
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
       updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
+      prepAuthenticator();
       autoLoadIfOverNetwork(hideInitializationMenu);
       document.getElementById("topHrLine").addEventListener("click", restoreInitializationMenu);
       document.getElementById("bottomHrLine").addEventListener("click", hideInitializationMenu);
