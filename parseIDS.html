@@ -1083,8 +1083,12 @@
 
       var prepAuthenticator = function() {
         var cookie = getCookieAsArr();
+        var jqd1 = new $.Deferred();
+        var promise1 = jqd1.promise();
+
         if (cookie["use-auth-mode"] == "no") {
           document.getElementById("ShowPng").checked = false;
+          jqd1.resolve();
         } else
         if (cookie["use-auth-mode"] == "yes") {
           var postFunc1 = function(evt) {
@@ -1098,30 +1102,47 @@
             }
           };
           testIfPngAvailablility("PNG/", postFunc1);
+          jqd1.resolve();
         }
         else {
           elmAuthenticator = document.getElementById("Authenticator");
           elmAuthenticator.style.zIndex = 2;
-          var promise = showDialogAndAuth();
-          promise.done(function(){
+
+          var promise2 = showDialogAndAuth();
+          promise2.done(function(){
             cookie["use-auth-mode"] = "yes";
             updateCookieFromArr(cookie);
             elmAuthenticator.style.zIndex = 0;
             elmAuthenticator.style.display = "none";
+            setTimeout(function(){jqd1.resolve();}, 5); // wait for authenticator hiding
           });
-          promise.fail(function(){
+          promise2.fail(function(){
             cookie["use-auth-mode"] = "no";
             updateCookieFromArr(cookie);
             elmAuthenticator.style.zIndex = 0;
             elmAuthenticator.style.display = "none";
+            setTimeout(function(){jqd1.resolve();}, 5); // wait for authenticator hiding
           });
         }
+        return promise1;
       }
 
       var autoLoadIfOverNetwork = function(funcPostProc) {
         if (document.location.protocol == "file:" || document.location.hash.toLowerCase().indexOf("noautoload") > -1) {
           return;
         }
+
+        var promise1 = prepAuthenticator();
+        var jqd2 = new $.Deferred();
+
+        $.when(promise1, jqd2.promise())
+        .done(
+          function() {
+            parseIdsText();
+            parseAttrJsonText();
+            funcPostProc();
+          }
+        );
 
         var msgElm = document.getElementById("StatusMsg");
         var urlPrefix = document.location.href.split("/").slice(0,-1).join("/");
@@ -1136,7 +1157,7 @@
           { baseName: "cjksrc-attr.json", globalTextName: "attrJsonText", tryAsZip: false}
         ];
 
-        var loadFirstFileByXHR = function(files, funcPostProc) {
+        var loadFirstFileByXHR = function(files) {
           var f = files.shift();
           var url = urlPrefix + "/" + f.baseName;
 
@@ -1168,11 +1189,9 @@
             };
 
             if (files.length > 0) {
-              loadFirstFileByXHR(files, funcPostProc);
+              loadFirstFileByXHR(files);
             } else {
-              parseIdsText();
-              parseAttrJsonText();
-              funcPostProc();
+              jqd2.resolve();
             }
           };
           xhr.onerror = function(evt) {
@@ -1195,8 +1214,9 @@
           }
         };
         if (i == filesToLoad.length) {
-          loadFirstFileByXHR(filesToLoad, funcPostProc);
+          loadFirstFileByXHR(filesToLoad);
         }
+
       };
 
       var restoreInitializationMenu = function() {
@@ -1356,7 +1376,6 @@
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
       updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
-      prepAuthenticator();
       autoLoadIfOverNetwork(hideInitializationMenu);
       document.getElementById("topHrLine").addEventListener("click", restoreInitializationMenu);
       document.getElementById("bottomHrLine").addEventListener("click", hideInitializationMenu);
