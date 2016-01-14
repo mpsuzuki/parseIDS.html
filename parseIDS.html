@@ -732,6 +732,7 @@
       }
 
       function lookupComponents() {
+        updateUsePngFromUi();
         var components = uiStr2NameArr(document.CheckComponent.Components.value);
         var lookupDB = new Array();
         var candidates = new Array();
@@ -1067,14 +1068,17 @@
             if (this.readyState == 4) {
               if (this.status == 200) {
                 document.getElementById("ShowPng").checked = true;
+                usePng = true;
                 jqd.resolve();
               } else
               if (this.status == 401) {
                 document.getElementById("ShowPng").checked = false;
+                usePng = false;
                 jqd.resolve();
               } else
               {
                 document.getElementById("ShowPng").checked = false;
+                usePng = false;
                 jqd.reject();
               }
             }
@@ -1084,6 +1088,7 @@
           
         var abortAuth = function() {
           document.getElementById("ShowPng").checked = false;
+          usePng = false;
           jqd.reject();
         };
         btnToYes.addEventListener("click", tryAuth);
@@ -1099,6 +1104,7 @@
 
         if (cookie["use-auth-mode"] == "no") {
           document.getElementById("ShowPng").checked = false;
+          usePng = false;
           jqd1.resolve();
         } else
         if (cookie["use-auth-mode"] == "yes") {
@@ -1106,9 +1112,11 @@
             if (this.readyState == 4) {
               if (this.status == 200) {
                 document.getElementById("ShowPng").checked = true;
+                usePng = true;
               } else
               if (this.status == 401 || this.status == 404) {
                 document.getElementById("ShowPng").checked = false;
+                usePng = false;
               }
             }
           };
@@ -1122,6 +1130,7 @@
           var promise2 = showDialogAndAuth();
           promise2.done(function(){
             cookie["use-auth-mode"] = "yes";
+            usePng = true;
             updateCookieFromArr(cookie);
             elmAuthenticator.style.zIndex = 0;
             elmAuthenticator.style.display = "none";
@@ -1129,6 +1138,7 @@
           });
           promise2.fail(function(){
             cookie["use-auth-mode"] = "no";
+            usePng = false;
             updateCookieFromArr(cookie);
             elmAuthenticator.style.zIndex = 0;
             elmAuthenticator.style.display = "none";
