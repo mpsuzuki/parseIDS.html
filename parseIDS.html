@@ -986,6 +986,32 @@
         return arr;
       };
 
+      function componentFormKbdHandler(evt) {
+        var elmComponents = document.CheckComponent.Components;
+        if (elmComponents.idxToHistory == null || elmComponents.idxToHistory == undefined) {
+          elmComponents.idxToHistory = 0;
+        }
+
+        var keyCode = evt.which;
+        if (!keyCode) {
+          keyCode = evt.keyCode;
+        }
+        if (keyCode == 38) { // "Up" arrow
+          if (elmComponents.idxToHistory > 0) {
+            elmComponents.idxToHistory = elmComponents.idxToHistory - 1;
+            elmComponents.value = queryHistory[elmComponents.idxToHistory];
+          }
+          evt.preventDefault();
+        } else
+        if (keyCode == 40) { // "Down" arrow
+          if (elmComponents.idxToHistory < queryHistory.length - 1) {
+            elmComponents.idxToHistory = elmComponents.idxToHistory + 1;
+            elmComponents.value = queryHistory[elmComponents.idxToHistory];
+          }
+          evt.preventDefault();
+        }
+      }
+
       var setCookiesFromArrWithMaxAge = function(arr, maxAge) {
         var expireDate = new Date();
         expireDate.setTime((new Date()).getTime() + maxAge);
@@ -1395,6 +1421,30 @@
       </div>
     </div>
     <script>
+      function genericKbdHandler(evt) {
+        var keyCode = evt.which;
+        if (!keyCode) {
+          keyCode = evt.keyCode;
+        }
+        if (keyCode == 2 && evt.ctrlKey) { // Ctrl+B
+          $("#btnDecompose").trigger("click");
+          evt.preventDefault();
+        } else
+        if (keyCode == 6 && evt.ctrlKey && evt.shiftKey) { // Ctrl + Shift + "F"
+          $("body").scrollTop(0);
+          $("#Components").focus();
+          evt.preventDefault();
+        } else
+        if (keyCode == 17 && evt.ctrlKey) { // Ctrl+Q 
+          $("#btnLookup").trigger("click");
+          evt.preventDefault();
+        }
+      }
+
+      document.CheckComponent.Components.addEventListener("keypress", componentFormKbdHandler);
+      document.addEventListener("keypress", genericKbdHandler);
+      document.CheckComponent.Components.addEventListener("keydown", componentFormKbdHandler);
+
       document.getElementById("PageSelectorHeader").addEventListener("change", movePageBySelector);
       document.getElementById("PageSelectorFooter").addEventListener("change", movePageBySelector);
       document.getElementById("FontSize").addEventListener("change", updateFontSize);
