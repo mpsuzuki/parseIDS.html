@@ -1174,12 +1174,26 @@
         return promise1;
       }
 
-      var autoLoadIfOverNetwork = function(funcPostProc) {
-        if (document.location.protocol == "file:" || document.location.hash.toLowerCase().indexOf("noautoload") > -1) {
+      var autoLoad = function(funcPostProc) {
+        var isFileUrl = false;
+        if (document.location.protocol == "file:") {
+          isFileUrl = true;
+        }
+        if (document.location.hash.toLowerCase().indexOf("noautoload") > -1) {
           return;
         }
 
-        var promise1 = prepAuthenticator();
+        var jqd1 = null;
+        var promise1 = null;
+
+        if (isFileUrl) {
+          jqd1 = new $.Deferred();
+          promise1 = jqd1.promise();
+          document.getElementById("PngDir").value = "PNG/";
+        } else {
+          promise1 = prepAuthenticator();
+        }
+
         var jqd2 = new $.Deferred();
 
         $.when(promise1, jqd2.promise())
@@ -1215,7 +1229,7 @@
           };
           xhr.open("GET", url, true);
           xhr.onload = function(evt) {
-            if (this.readyState == 4 && this.status == 200) {
+            if (this.readyState == 4 && this.status == (isFileUrl ? 0 : 200)) {
               if (f.tryAsZip) {
                 var unzip = new JSZip(new Uint8Array(this.response));
                 var orgFile = unzip.file(f.baseName);
@@ -1239,6 +1253,9 @@
               loadFirstFileByXHR(files);
             } else {
               jqd2.resolve();
+              if (jqd1) {
+                jqd1.resolve();
+              }
             }
           };
           xhr.onerror = function(evt) {
@@ -1393,7 +1410,7 @@
         <form name="CheckComponent" onsubmit="return false;">
           <input type="text" name="Components">
           <input type="button" value="lookup" onclick="lookupComponents()">
-          <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
+          <input type="button" id="btnDecompose" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
           <br>
           <input type="checkbox" id="ChkboxForHexUcs" onclick="showFoundChars()">show UCS codepoint
           <br>
@@ -1458,7 +1475,7 @@
       elmFoundIdsBody = document.getElementById("FoundIdsBody");
       elmFoundIdsTable = document.getElementById("FoundIdsTable");
       updateTableMatrix(elmFoundIdsTable, maxPngRows, maxPngColumns);
-      autoLoadIfOverNetwork(hideInitializationMenu);
+      autoLoad(hideInitializationMenu);
       document.getElementById("topHrLine").addEventListener("click", restoreInitializationMenu);
       document.getElementById("bottomHrLine").addEventListener("click", hideInitializationMenu);
     </script>
