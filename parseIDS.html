@@ -67,6 +67,49 @@
       clear: both;
       width: 100%;
     }
+
+    @font-face {
+      font-family: "HanaMinA";
+      src: url("HanaMinA.ttf");
+    }
+    @font-face {
+      font-family: "HanaMinB";
+      src: url("HanaMinB.ttf");
+    }
+
+    span.URO {
+      font-family: "HanaMinA";
+    }
+    span.ExtA {
+      font-family: "HanaMinA";
+    }
+    span.CmptBMP {
+      font-family: "HanaMinA";
+    }
+    span.CmptSIP {
+      font-family: "HanaMinA";
+    }
+
+    span.ExtB {
+      font-family: "HanaMinB";
+    }
+    span.ExtC {
+      font-family: "HanaMinB";
+    }
+    span.ExtD {
+      font-family: "HanaMinB";
+    }
+    span.ExtE {
+      font-family: "HanaMinB";
+    }
+    span.ExtF {
+      font-family: "HanaMinB";
+    }
+
+    span.ucs-hex {
+      font-size: 9px;
+    }
+
     -->
     </style>
   </head>
@@ -150,6 +193,43 @@
           return ( ((ustr.charCodeAt(0) & 0x03FF) << 10) + (ustr.charCodeAt(1) & 0x03FF) + 0x10000);
         }
         return ustr.charCodeAt(0);
+      }
+
+      function utf16str2ucsBlock(utf16Str) {
+        var ucsInt = ucsArrToUcs4Codepoint(utf16Str);
+        if (ucsInt < 0x3400) {
+          return null;
+        } else
+        if (ucsInt < 0x4E00) {
+          return "ExtA";
+        } else
+        if (ucsInt < 0x9FFF) {
+          return "URO";
+        } else
+        if (ucsInt < 0xF900) {
+          return null;
+        } else
+        if (ucsInt < 0xFAFF) {
+          return "CmptBMP";
+        } else
+        if (ucsInt < 0x20000) {
+          return null;
+        } else
+        if (ucsInt <= 0x2A6FF) {
+          return "ExtB";
+        } else
+        if (ucsInt <= 0x2B73F) {
+          return "ExtC";
+        } else
+        if (ucsInt <= 0x2B81F) {
+          return "ExtD";
+        } else
+        if (ucsInt <= 0x2CAEF) {
+          return "ExtE";
+        } else
+        if (ucsInt <= 0x2FFFF) {
+          return "CmptSIP";
+        }
       }
 
       var IdsItem = function() {
@@ -403,29 +483,6 @@
         document.getElementById("ChkboxForTotalStrokeSort").disabled = false;
       }
 
-      function addHexCodePointToUcsArray(inArr) {
-        var outArr = new Array();
-        for ( var i in inArr ) {
-          var rawUcs4 = null;
-          if (inArr[i].charCodeAt(0) == 0x26) {
-            rawUcs4 = null;
-          } else {
-            rawUcs4 = ucsArrToUcs4Codepoint(inArr[i]);
-          }
-          var rawStrOrName = rawUcs4 ? inArr[i] : inArr[i].slice(1,-1);
-          var hexCode = rawUcs4 ? ("U+" + (rawUcs4.toString(16).toUpperCase())) : "-";
-          var hexCodeOrName = rawUcs4 ? hexCode : rawStrOrName;
-          if ( !hasAttrDB ) {
-            outArr.push( rawStrOrName + "(" + hexCode + ")" );
-          } else if ( attrDB[hexCodeOrName] == undefined || attrDB[hexCodeOrName].totalStrokes == undefined ) {
-            outArr.push( rawStrOrName + "(" + hexCode + ":-)" );
-          } else {
-            outArr.push( rawStrOrName + "(" + hexCode + ":" + attrDB[hexCodeOrName].totalStrokes.toString(10) + ")" );
-          }
-        }
-        return outArr;
-      }
-
       function fillTableWithPngAfterGettingBasicImgHeight(elmTable, inArr) {
         if (basicImgHeight == undefined || basicImgHeight == 0) {
           var footer = document.getElementById("Footer");
@@ -543,13 +600,9 @@
       }
 
       function showFoundResult(arr) {
-        if (document.getElementById("ChkboxForHexUcs").checked) {
-          arr = addHexCodePointToUcsArray(arr);
-        } else {
-          for (var i in arr) {
-            if (arr[i].charCodeAt(0) == 0x26) {
-              arr[i] = arr[i].slice(1,-1);
-            }
+        for (var i in arr) {
+          if (arr[i].charCodeAt(0) == 0x26) {
+            arr[i] = arr[i].slice(1,-1);
           }
         }
 
@@ -559,7 +612,28 @@
           elmFoundIdsTable.style.display = "block";
         } else {
           elmFoundIdsTable.style.display = "none";
-          elmFoundIdsBody.innerHTML = arr.join(", ");
+          jqFoundIdsBody = $(elmFoundIdsBody);
+          jqFoundIdsBody.empty();
+          arr.forEach(function(ucs, i){
+            if (i > 0) {
+              jqFoundIdsBody.append(", ");
+            }
+            var blk = utf16str2ucsBlock(ucs);
+            $("<span>").addClass(blk).append(ucs).appendTo(jqFoundIdsBody);
+
+            if (document.getElementById("ChkboxForHexUcs").checked) {
+              var rawUcs4 = null;
+              if (ucs.charCodeAt(0) == 0x26) {
+                rawUcs4 = null;
+              } else {
+                rawUcs4 = ucsArrToUcs4Codepoint(ucs);
+              }
+              var rawStrOrName = rawUcs4 ? ucs : ucs.slice(1,-1);
+              var hexCode = rawUcs4 ? ("U+" + (rawUcs4.toString(16).toUpperCase())) : "-";
+              var hexCodeOrName = rawUcs4 ? hexCode : rawStrOrName;
+              $("<span>").addClass("ucs-hex").append("(" + hexCodeOrName + ")").appendTo(jqFoundIdsBody);
+            }
+          });
           elmFoundIdsBody.style.display = "block";
         }
       }
