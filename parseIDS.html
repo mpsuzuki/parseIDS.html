@@ -527,6 +527,8 @@
             ctxt = r.cells[x*2];
             cimg = r.cells[(x*2) + 1];
             txt = ctxt.childNodes[0];
+            jqTxtUcs = $(ctxt.childNodes[0]);
+            jqTxtHex = $(ctxt.childNodes[1]);
             img = cimg.childNodes[0];
             if ( i < inArr.length ) {
               var ustr = inArr[i].split("(")[0];
@@ -534,7 +536,12 @@
               var uhex = ucs4 ? ucs4.toString(16).toUpperCase() : null;
               var txt, img;
 
-              txt.data = inArr[i];
+              // txt.data = inArr[i];
+              jqTxtUcs.empty().append(ustr).addClass(utf16str2ucsBlock(ustr));
+              jqTxtHex.empty();
+              if (document.getElementById("ChkboxForHexUcs").checked) {
+                jqTxtHex.append("(U+" + uhex + ")").addClass("ucs-hex");
+              }
 
               img.align = "middle";
               img.style.display = "none";
@@ -651,7 +658,8 @@
             r = elmTable.rows[y];
             for ( x = r.cells.length; x < (columns*2); x += 1 ) {
               r.insertCell(-1);
-              r.lastChild.appendChild(document.createTextNode(""));
+              r.lastChild.appendChild(document.createElement("span"));
+              r.lastChild.appendChild(document.createElement("span"));
               r.insertCell(-1);
               r.lastChild.appendChild(document.createElement("img"));
             }
