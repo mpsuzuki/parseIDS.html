@@ -1,0 +1,255 @@
+<html>
+  <head>
+    <title>parseIDS</title>
+  </head>
+  <body>
+    <script type="text/javascript">
+    <!--
+      function utf16Str2UcsArr(ustr) {
+        var i, c, arr;
+        arr = new Array();
+        for (i = 0; i < ustr.length; i += 1) {
+          c = ustr.charCodeAt(i);
+          if (0xD800 <= c && c <= 0xDBFF && (i+1) < ustr.length) {
+            c = ustr.charCodeAt(i+1);
+            if (0xDC00 <= c && c <= 0xDFFF) {
+              arr.push(ustr.substr(i,2));
+              i += 1;
+              continue;
+            }
+          }
+          arr.push(ustr.substr(i,1));
+        }
+        return arr;
+      }
+
+      function ucsArrToUcs4Codepoint(ustr) {
+        if (ustr.length > 1) {
+          return ( ((ustr.charCodeAt(0) & 0x03FF) << 10) + (ustr.charCodeAt(1) & 0x03FF) + 0x10000);
+        }
+        return ustr.charCodeAt(0);
+      }
+
+      var IdsItem = function() {
+        this.idsArrays = new Array();
+        this.cacheN = new Array();
+      }
+      IdsItem.prototype.setUcs = function(ucs) {
+        this.ucs = ucs;
+        return this;
+      }
+      IdsItem.prototype.setIdss = function(idss) {
+        this.idss = idss;
+        for (i in this.idss) {
+          this.idsArrays[i] = utf16Str2UcsArr(this.idss[i]);
+        }
+        return this;
+      }
+      IdsItem.prototype.countAComponent = function(c) {
+        var i, j, u;
+        var idsArr;
+        var numFound, maxNumFound;
+        if ( this.cacheN[c] != undefined ) {
+          return this.cacheN[c];
+        } else if ( this.ucs == c ) {
+          maxNumFound = 1;
+        } else {
+          maxNumFound = 0;
+          for ( i in this.idss ) {
+            numFound = 0;
+            idsArr = this.idsArrays[i];
+            if (idsArr.length > 1) {
+              for ( j in idsArr ) {
+                u = idsArr[j];
+                if ( idsDB[u] != undefined ) {
+                  numFound += idsDB[u].countAComponent(c);
+                }
+              }
+            }
+            maxNumFound = Math.max(maxNumFound, numFound);
+          }
+        }
+
+        this.cacheN[c] = maxNumFound;
+        return maxNumFound;
+      }
+
+
+
+      // -------------------------------------------------------
+
+      var idsDB = new Array();
+      var idsText = new String();
+
+      // -------------------------------------------------------
+      function loadIdsFileByXHR() {
+        var reqIds;
+        if (window.ActiveXObject) {
+          reqIds = new ActiveXObject('Microsoft.XMLHTTP');
+        } else {
+          reqIds = new XMLHttpRequest();
+        }
+        reqIds.open('GET', document.IdsFile.pathToIds.value, false);
+        reqIds.send(null);
+        if (reqIds.status == 0) {
+          idsText = reqIds.responseText;
+          document.getElementById("loadedIds").innerHTML = idsText.length.toString(10) + " bytes loaded";
+        }
+      }
+
+      function loadIdsFileByFileAPI() {
+        var idsFile = document.IdsFile.pathToIds.files[0];
+        var idsFileReader = new FileReader();
+        idsFileReader.onload = function(event) {
+          idsText = event.target.result;
+          document.getElementById("loadedIds").innerHTML = idsText.length.toString(10) + " bytes loaded";
+        }
+        idsFileReader.readAsText(idsFile, "utf-8");
+      }
+
+      function loadIdsFile() {
+        if (window.File && window.FileReader) {
+          loadIdsFileByFileAPI();
+        } else {
+          loadIdsFileByXHR();
+        }
+        if (document.IdsFile.debugFileLoader[0].checked) {
+          document.getElementById("loadedIds").innerHTML = "<pre>" + idsText + "</pre>";
+        }
+      }
+
+      // TODO: array cannot hold more than 0xFFFF members!
+      function parseIdsText() {
+        var ucsName, ucs, toks, i, j, k;
+        var idsItems = idsText.split("\n");
+        for ( i in idsItems ) {
+          toks = idsItems[i].split("\t");
+          ucsName = toks.shift();
+          ucs = toks.shift();
+          idsDB[ucs] = new IdsItem().setUcs(ucs).setIdss(toks);
+        }
+        document.getElementById("loadedIds").innerHTML = idsItems.length.toString(10) + " items parsed";
+      }
+
+      function addHexCodePointToUcsArray(inArr) {
+        outArr = new Array();
+        for ( var i in inArr ) {
+          outArr.push( inArr[i] + "(U+" + ucsArrToUcs4Codepoint(inArr[i]).toString(16).toUpperCase() + ")" );
+        }
+        return outArr;
+      }
+
+      function lookupComponents() {
+        var components = utf16Str2UcsArr(document.checkComponent.components.value);
+        var lookupDB = new Array();
+        var candidates = new Array();
+        var results = new Array();
+        var i, c, u;
+
+        for ( i in components ) {
+          c = components[i];
+          if ( lookupDB[c] == undefined ) {
+            lookupDB[c] = 1;
+          } else {
+            lookupDB[c] += 1;
+          }
+        }
+
+        for ( u in idsDB ) {
+          candidates.push(u);
+        }
+
+        for ( c in lookupDB ) {
+          for ( i in candidates ) {
+            u = candidates[i];
+            if ( idsDB[u].countAComponent(c) >= lookupDB[c] ) {
+              results.push(u);
+            }
+          }
+          candidates = results;
+          results = new Array();
+        }
+
+        if (document.checkComponent.addHexUcsToResult[0].checked) {
+          candidates = addHexCodePointToUcsArray(candidates);
+        }
+        document.getElementById("loadedIds").innerHTML = candidates.join(", ");
+      }
+
+      function decomposeSelectedComponents(wholeString, selectionStart, selectionEnd) {
+        var c, d, u, i, j, k, l;
+        for ( j = selectionEnd - 1; selectionStart <= j ; j -= 1 ) {
+          l = wholeString.length;
+          k = j + 1;
+          c = wholeString.charCodeAt(j);
+          if (0xD800 <= c && c <= 0xDBFF && (j+1) < l) {
+            d = wholeString.charCodeAt(j+1);
+            if (0xDC00 <= d && d <= 0xDFFF) {
+              k = j + 2;
+            }
+          }
+          u = wholeString.substring(j,k);
+          var curHead = wholeString.substring(0,j);
+          var curTail = wholeString.substring(k,l);
+          if (idsDB[u] != undefined && idsDB[u].idss.length > 0) {
+            wholeString = curHead + "(" + idsDB[u].idss.join("|") + ")" + curTail;
+          }
+        }
+        return wholeString;
+      }
+
+      function wrapDecomposeSelectedComponents(formElement) {
+        formElement.focus();
+
+        if (formElement.setSelectionRange) {
+          formElement.value = decomposeSelectedComponents(formElement.value, formElement.selectionStart, formElement.selectionEnd);
+
+        } else if (document.selection) {
+          var nMoved;
+          var range = document.selection.createRange();
+          var rangeTmp = range.duplicate();
+          var selectionStart = 0;
+          var selectionEnd = 0;
+          do {
+            nMoved = rangeTmp.moveStart('character', -1);
+            selectionStart -= nMoved;
+          } while (nMoved != 0);
+          selectionEnd = selectionStart + range.text.length;
+          formElement.value = decomposeSelectedComponents(formElement.value, selectionStart, selectionEnd);
+
+        } else {
+          document.getElementById("loadedIds").innerHTML = "decomposition is not available on this system";
+        }
+      }
+
+      function updateFontSize() {
+        document.getElementById("loadedIds").style.fontSize = parseInt(document.outStyle.outFontSize.value);
+      }
+
+    // -->
+    </script>
+    <form name="IdsFile" onsubmit="return false;">
+      <input type="radio" name="debugFileLoader" value="yes">debug
+      <input type="radio" name="debugFileLoader" value="no" checked>no debug
+      <br>
+      <input type="file" name="pathToIds">
+      <input type="button" value="load ids.txt" onclick="loadIdsFile()">
+      <input type="button" value="parse ids.txt" onclick="parseIdsText()">
+    </form>
+    <form name="checkComponent" onsubmit="return false;">
+      <input type="text" name="components">
+      <input type="button" value="lookup" onclick="lookupComponents()">
+      <input type="button" value="decompose selected chars" onclick="wrapDecomposeSelectedComponents(this.form.elements[0])">
+      <br>
+      <input type="radio" name="addHexUcsToResult" value="yes">show UCS codepoint
+      <input type="radio" name="addHexUcsToResult" value="no" checked>no UCS codepoint
+      <br>
+    </form>
+    <form name="outStyle" onsubmit="return false;">
+      <input type="text" name="outFontSize">
+      <input type="button" value="change fontSize" onclick="updateFontSize()">
+    </form>
+    <div id="loadedIds">
+    </div>
+  </body>
+</html>
