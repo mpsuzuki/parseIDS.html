@@ -1258,9 +1258,14 @@
 
       var autoLoad = function(funcPostProc) {
         var isFileUrl = false;
+        var onPublicWebSite = false;
         if (document.location.protocol == "file:") {
           isFileUrl = true;
+        } else
+        if (!/\.(com|net|org)$/.test(document.location.hostname)) {
+          onPublicWebSite = true;
         }
+
         if (document.location.hash.toLowerCase().indexOf("noautoload") > -1) {
           return;
         }
@@ -1268,7 +1273,7 @@
         var jqd1 = null;
         var promise1 = null;
 
-        if (isFileUrl) {
+        if (isFileUrl || onPublicWebSite) {
           jqd1 = new $.Deferred();
           promise1 = jqd1.promise();
           document.getElementById("PngDir").value = "PNG/";
